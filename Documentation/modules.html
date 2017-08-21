@@ -1,0 +1,167 @@
+<html><head><title>Poma Doc</title>
+<style>
+
+			table {
+				border-collapse: collapse;
+				border: 1px solid black;
+				width: 98%;
+				margin-left: auto;
+				margin-right: auto;
+			}
+			
+			body {
+				background-color: #ffffff;
+			}
+
+			th, td {
+				text-align: left;
+				padding: 8px;
+			}
+
+			tr:nth-child(even){background-color: #f2f2f2}
+
+			th {
+				background-color: #336699;
+				color: white;
+			}
+			
+			th.modtitle {
+				background-color: #696969;
+				color: white;
+			}
+			
+			th.paraminfo {
+				background-color: #708090;
+				color: white;
+			}
+
+</style></head><body><div style="overflow-x:auto;">
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>Blocker</b></th></tr>
+   <tr><td colspan="4">Blocker module (delays packets for the specified amount of time)</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>wait</td><td>Integer</td><td>wait time in seconds (-1 infinite)</td><td>1</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>Buffer</b></th></tr>
+   <tr><td colspan="4">Buffering module</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>warnsize</td><td>Integer</td><td>buffer warn size</td><td>1024</td></tr>
+<tr><td>packetskip</td><td>Integer</td><td>number of skip packets</td><td>1</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>Dummy</b></th></tr>
+   <tr><td colspan="4">Dummy module</td></tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>ForceChannel</b></th></tr>
+   <tr><td colspan="4">Forces all packets into an output channel</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>channel</td><td>String</td><td>output channel</td><td>default</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>GenericSplitter</b></th></tr>
+   <tr><td colspan="4">Sends data on different channels depending on class</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Construction parameters (cparams)</b></th></tr>
+   <tr><td colspan="4">Metadata property to split from</td></tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>Joiner</b></th></tr>
+   <tr><td colspan="4">Join after a fork: connect this module back to the ParExecutor on the _join channel</td></tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>LoadBalancer</b></th></tr>
+   <tr><td colspan="4">Load balancer</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>random</td><td>Boolean</td><td>use random selection instead of round robin</td><td>false</td></tr>
+<tr><td>sinks</td><td>Integer</td><td>number of sinks</td><td>0</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>MetadataFilter</b></th></tr>
+   <tr><td colspan="4">Filter blobs depending on JSON values</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Mandatory parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th colspan="2">Description</th></tr>
+<tr><td>field</td><td>String</td><td colspan="2">JSON field to be compared</td></tr>
+<tr><td>op</td><td>String</td><td colspan="2">Comparison operation (>,<,=,!=,<=,>=)</td></tr>
+<tr><td>value</td><td>String</td><td colspan="2">Value to compare to</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>MetadataProcessor</b></th></tr>
+   <tr><td colspan="4">Processes values in the property tree</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Mandatory parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th colspan="2">Description</th></tr>
+<tr><td>code</td><td>String</td><td colspan="2">Code to be executed</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>ParExecutor</b></th></tr>
+   <tr><td colspan="4">Parallel executor (Fork): pipeline to be parallelized must connect to the template channel</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>threads</td><td>Integer</td><td>force number of threads</td><td>-1</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>ParProcessor</b></th></tr>
+   <tr><td colspan="4">Parallel processor: executes each connected source node (on the default channel) on a different thread</td></tr>
+   <tr><td colspan="4"><i>This module can be used as a pipeline source</i></td></tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>PipeConfigurator</b></th></tr>
+   <tr><td colspan="4">Pipeline configurator</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>inputpipe</td><td>String</td><td>FIFO input (command) path</td><td>pomaconfigurator.input</td></tr>
+<tr><td>outputpipe</td><td>String</td><td>FIFO output (result) path</td><td>pomaconfigurator.output</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>Skipper</b></th></tr>
+   <tr><td colspan="4">Skip some packets</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>skipinterval</td><td>Integer</td><td>interval (frames) between submitted frames</td><td>1</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>StatelessParExecutor</b></th></tr>
+   <tr><td colspan="4">Stateless parallel executor (Fork): pipeline to be parallelized must connect to the template channel</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>threads</td><td>Integer</td><td>force number of threads</td><td>-1</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>Stats</b></th></tr>
+   <tr><td colspan="4">Write processing stats</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>statsinterval</td><td>Integer</td><td>interval (packets) between stats printout</td><td>256</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>ZeroMQSink</b></th></tr>
+   <tr><td colspan="4">ZeroMQ Sink module</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>sinkaddress</td><td>String</td><td>0MQ sink socket address</td><td>tcp://localhost:7467</td></tr>
+   </tr>
+</table><br/><br/>
+  <table>
+   <tr><th class="modtitle" colspan="4"><b>ZeroMQSource</b></th></tr>
+   <tr><td colspan="4">ZeroMQ Source module</td></tr>
+   <tr><th class="paraminfo" colspan="4"><b>Optional parameters</b></th></tr>
+   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>
+<tr><td>sourceaddress</td><td>String</td><td>0MQ source socket address</td><td>tcp://*:7467</td></tr>
+   </tr>
+</table><br/><br/>
+</div></body></html>

@@ -1,0 +1,5 @@
+# ************************* Project specific dependencies **************
+# Insert here (use CUSTOM_TARGET_LINK_LIBS to link additional libraries)
+# **********************************************************************
+set(BOOST_ROOT /usr/local)
+set(CUSTOM_TARGET_LINK_LIBS "${CUSTOM_TARGET_LINK_LIBS}")
