@@ -1,4 +1,4 @@
-# PoorMan's Pipeline
+# Poma Pipeline
 
 This tool enables you to easily create modular pipelines for processing data. Multiple threads and/or distributed execution (on multiple machines) is natively supported. Pipelines are defined through a JSON file: each module is compiled into a separate library which gets loaded dynamically. If necessary pipeline descriptions can be embedded into the code of your application.
 A description of the base modules shipped with this tool is in the Documentation directory.
@@ -8,7 +8,7 @@ To compile you need to satisfy the following dependencies:
 - Boost >= 1.63.0
 - (for distributed processing) 0MQ
 
-## Install instruction
+## Install instructions
 
 These are the instructions to compile the framework on a Ubuntu/Debian machine. To keep you system clean we are going to package additional software into deb files.
 
@@ -25,7 +25,7 @@ Download the latest version of CMake from https://cmake.org/download/ and uncomp
 ### Install Boost (>= 1.63.0)
 
 Download Boost from https://sourceforge.net/projects/boost/files/boost/1.63.0/boost_1_63_0.tar.bz2
-Uncompress the archive and run ./bootstrap.sh --with-libraries=filesystem,program_options,system,chrono,thread --exec-prefix=/usr/local`. When building is completed, run `sudo checkinstall -y --pkgname poma-boost --pkgversion 1 --pkgrelease 1  ./b2 install --prefix=/usr/local` to install and package Boost
+Uncompress the archive and run `./bootstrap.sh --with-libraries=filesystem,program_options,system,chrono,thread --exec-prefix=/usr/local`. When building is completed, run `sudo checkinstall -y --pkgname poma-boost --pkgversion 1 --pkgrelease 1  ./b2 install --prefix=/usr/local` to install and package Boost
 
 ### Compile Poma
 
