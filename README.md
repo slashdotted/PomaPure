@@ -5,10 +5,11 @@ A description of the base modules shipped with this tool is in the Documentation
 
 To compile you need to satisfy the following dependencies:
 
+- CMake (>= 3.7)
 - Boost >= 1.63.0
-- (for distributed processing) 0MQ
+- (for distributed processing) 0MQ (ZeroMQ)
 
-## Install instructions
+## Install instructions (Ubuntu/Debian)
 
 These are the instructions to compile the framework on a Ubuntu/Debian machine. To keep you system clean we are going to package additional software into deb files. This procedure was tested on a clean Ubuntu MATE 16.04.2 install.
 
@@ -28,6 +29,8 @@ Download Boost from https://sourceforge.net/projects/boost/files/boost/1.63.0/bo
 Uncompress the archive and run `./bootstrap.sh --with-libraries=filesystem,program_options,system,chrono,thread --exec-prefix=/usr/local`. When building is completed, run `sudo checkinstall -y --pkgname poma-boost --pkgversion 1 --pkgrelease 1  ./b2 install --prefix=/usr/local` to install and package Boost
 
 ### Compile Poma
+
+Install ZeroQM development packages `sudo apt-get install libzmq-dev`.
 
 Download a snapshot or clone the git repository at https://github.com/slashdotted/PomaPure
 From the root directory, run `mkdir build && cd build && cmake ..`; if everything goes well you can compile the program with `make`.
