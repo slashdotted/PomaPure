@@ -12,6 +12,10 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 find_package( Boost 1.63.0 REQUIRED COMPONENTS system thread program_options filesystem chrono )
 include_directories( ${Boost_INCLUDE_DIRS} )
 
+if(CMAKE_COMPILER_IS_GNUCC)
+	set (CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wpedantic")
+endif(CMAKE_COMPILER_IS_GNUCC)
+
 include_directories(include ../../include)
 file(GLOB SOURCES "src/*.cpp")
 add_library(${CMAKE_PROJECT_NAME} SHARED ${SOURCES})

@@ -15,6 +15,10 @@ file(GLOB SOURCES_LIB "src/*.cpp")
 file(GLOB SOURCES_APP "appsrc/PomaLoader.cpp")
 file(GLOB SOURCES_EXAMPLE "appsrc/SampleEmbeddedPipeline.cpp")
 
+if(CMAKE_COMPILER_IS_GNUCC)
+	set (CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wpedantic")
+endif(CMAKE_COMPILER_IS_GNUCC)
+
 add_library(Loader SHARED ${SOURCES_LIB})
 target_link_libraries(Loader ${Boost_LIBRARIES} ${CMAKE_DL_LIBS})
 

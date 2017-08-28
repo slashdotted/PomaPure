@@ -91,7 +91,7 @@ void Buffer::setup_cli(boost::program_options::options_description& desc) const
 
 void Buffer::process_cli(boost::program_options::variables_map& vm)
 {
-    m_warn_size = vm["warnsize"].as<int>();
+    m_warn_size = (unsigned int) vm["warnsize"].as<int>();
     m_packetskip = vm["packetskip"].as<int>();
 }
 

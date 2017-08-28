@@ -3,7 +3,7 @@
  *                             Scuola Universitaria Professionale della
  *                             Svizzera Italiana (SUPSI)
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -12,10 +12,10 @@
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
  *     * Neither the name of the Scuola Universitaria Professionale della Svizzera
- *       Italiana (SUPSI) nor the names of its contributors may be used 
- *       to endorse or promote products derived from this software without 
+ *       Italiana (SUPSI) nor the names of its contributors may be used
+ *       to endorse or promote products derived from this software without
  *       specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -97,6 +97,7 @@ std::shared_ptr<PomaModuleType> Loader::get_instance(const std::string& type, co
         return std::shared_ptr<PomaModuleType> {m_factories[type]->create(name)};
     } else {
         die("Cannot find module: " + type);
+        return nullptr;
     }
 }
 
@@ -113,8 +114,7 @@ void Loader::parse_json_config(std::istream& stream)
     boost::property_tree::ptree jmodules = jpt.get_child("modules.");
     std::string source_mid{jpt.get("source", "")};
 
-    for(auto &m : jmodules)
-    {
+    for(auto &m : jmodules) {
         std::string mid {m.first.data()};
         if (mid.find("#") == 0) continue; // disabled modules
         std::string mtype;
@@ -160,8 +160,7 @@ void Loader::parse_json_config(std::istream& stream)
     }
     std::cout << m_modules.size() << " modules registered" << std::endl;
     boost::property_tree::ptree jlinks = jpt.get_child("links.");
-    for(auto &l : jlinks)
-    {
+    for(auto &l : jlinks) {
         std::string from;
         std::string to;
         std::string channel {"default"};
@@ -271,15 +270,15 @@ void Loader::initialize()
 
 void Loader::flush()
 {
-	std::cerr << "flushing pipeline" << std::endl;
-	for (int i=0; i < m_modules.size(); i++) {
-		for (const auto& m : m_modules) {
-			//std::cerr << "\t" << m.first << "...";
-			m.second->flush();
-			std::cerr << ".";
-			//std::cerr << "ok" << std::endl;
-		}		
-	}
+    std::cerr << "flushing pipeline" << std::endl;
+    for (unsigned int i=0; i < m_modules.size(); i++) {
+        for (const auto& m : m_modules) {
+            //std::cerr << "\t" << m.first << "...";
+            m.second->flush();
+            std::cerr << ".";
+            //std::cerr << "ok" << std::endl;
+        }
+    }
     std::cerr << "done" << std::endl;
 }
 
@@ -331,7 +330,7 @@ void Loader::configure(int argc, char* argv[])
         exit(0);
     } else if (vm.count("config") != 0) {
         std::cout << "[" << std::endl;
-        int idx{0};
+        unsigned int idx{0};
         for (auto& factory : m_factories) {
             idx++;
             boost::program_options::options_description desc;
@@ -417,7 +416,7 @@ void Loader::configure(int argc, char* argv[])
                 }
             }
             std::cout << "   \"mandatoryParams\" : [" << std::endl;
-            for (int i{0}; i<mandatory_parameters.size(); i++) {
+            for (unsigned int i{0}; i<mandatory_parameters.size(); i++) {
                 std::cout << "        " << mandatory_parameters[i];
                 if (i < mandatory_parameters.size()-1) {
                     std::cout << ",";
@@ -426,7 +425,7 @@ void Loader::configure(int argc, char* argv[])
             }
             std::cout << "   ]," << std::endl;
             std::cout << "   \"optParams\" : [" << std::endl;
-            for (int i{0}; i<optional_parameters.size(); i++) {
+            for (unsigned int i{0}; i<optional_parameters.size(); i++) {
                 std::cout << "        " << optional_parameters[i];
                 if (i < optional_parameters.size()-1) {
                     std::cout << ",";
@@ -599,7 +598,7 @@ void Loader::configure(int argc, char* argv[])
             if (mandatory_parameters.size()) {
 				std::cout << "   <tr><th class=\"paraminfo\" colspan=\"4\"><b>Mandatory parameters</b></th></tr>" << std::endl;
 				std::cout << "   <tr><th>Name</th><th>Type</th><th colspan=\"2\">Description</th></tr>" << std::endl;
-				for (int i{0}; i<mandatory_parameters.size(); i++) {
+				for (unsigned int i{0}; i<mandatory_parameters.size(); i++) {
 					std::cout << mandatory_parameters[i] << std::endl;
 				}
 				std::cout << "   </tr>" << std::endl;
@@ -607,7 +606,7 @@ void Loader::configure(int argc, char* argv[])
 			if (optional_parameters.size()) {
 				std::cout << "   <tr><th class=\"paraminfo\" colspan=\"4\"><b>Optional parameters</b></th></tr>" << std::endl;
 				std::cout << "   <tr><th>Name</th><th>Type</th><th>Description</th><th>Default value</th></tr>" << std::endl;
-				for (int i{0}; i<optional_parameters.size(); i++) {
+				for (unsigned int i{0}; i<optional_parameters.size(); i++) {
 					std::cout << optional_parameters[i] << std::endl;
 				}
 				std::cout << "   </tr>" << std::endl;

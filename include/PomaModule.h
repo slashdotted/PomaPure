@@ -3,7 +3,7 @@
  *                             Scuola Universitaria Professionale della
  *                             Svizzera Italiana (SUPSI)
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -12,10 +12,10 @@
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
  *     * Neither the name of the Scuola Universitaria Professionale della Svizzera
- *       Italiana (SUPSI) nor the names of its contributors may be used 
- *       to endorse or promote products derived from this software without 
+ *       Italiana (SUPSI) nor the names of its contributors may be used
+ *       to endorse or promote products derived from this software without
  *       specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -80,36 +80,38 @@ struct Packet {
 // SERIALIZATION STUFF
 // *********************************************************************
 struct Serializable {
-	virtual void serialize(std::string& output) const = 0;
-	virtual void deserialize(const std::string::const_iterator& from, const std::string::const_iterator& to) = 0;
+    virtual void serialize(std::string& output) const = 0;
+    virtual void deserialize(const std::string::const_iterator& from, const std::string::const_iterator& to) = 0;
 };
 
 #define ASSERT_IS_POMA_SERIALIZABLE(X) static_assert(std::is_base_of<poma::Serializable, decltype(X)>::value, "X must inherit from poma::Serializable");
 
 template<typename T>
-void deserialize(Packet<T>& dta, const std::string& data_string) {
-	uint32_t ptree_payload_size{(uint32_t) ((data_string.at(0) << 24) + (data_string.at(1) << 16) + (data_string.at(2) << 8) + data_string.at(3))};
-	std::string json_string{data_string.substr (4, ptree_payload_size)};
-	std::stringstream iss{json_string};
-	boost::property_tree::json_parser::read_json(iss, dta.m_properties);
-	dta.m_data.deserialize(data_string.begin() + 4 + ptree_payload_size, data_string.end());
+void deserialize(Packet<T>& dta, const std::string& data_string)
+{
+    uint32_t ptree_payload_size{(uint32_t) ((data_string.at(0) << 24) + (data_string.at(1) << 16) + (data_string.at(2) << 8) + data_string.at(3))};
+    std::string json_string{data_string.substr (4, ptree_payload_size)};
+    std::stringstream iss{json_string};
+    boost::property_tree::json_parser::read_json(iss, dta.m_properties);
+    dta.m_data.deserialize(data_string.begin() + 4 + ptree_payload_size, data_string.end());
 }
 
 template<typename T>
-void serialize(const Packet<T>& dta, std::string& data_string) {
-	ASSERT_IS_POMA_SERIALIZABLE(dta.m_data);
-	std::stringstream ss;
-	boost::property_tree::write_json(ss, dta.m_properties);
-	auto json_string{ss.str()};
-	// Warning: assume a maximum length of 2^32 bytes
-	uint32_t ptree_payload_size{(uint32_t) json_string.size()};
-	// big endian
-	data_string.push_back((ptree_payload_size >> 24) & 0xFF);
-	data_string.push_back((ptree_payload_size >> 16) & 0xFF);
-	data_string.push_back((ptree_payload_size >> 8) & 0xFF);
-	data_string.push_back(ptree_payload_size & 0xFF);
-	data_string.insert(data_string.end(), json_string.begin(), json_string.end());
-	dta.m_data.serialize(data_string);
+void serialize(const Packet<T>& dta, std::string& data_string)
+{
+    ASSERT_IS_POMA_SERIALIZABLE(dta.m_data);
+    std::stringstream ss;
+    boost::property_tree::write_json(ss, dta.m_properties);
+    auto json_string{ss.str()};
+    // Warning: assume a maximum length of 2^32 bytes
+    uint32_t ptree_payload_size{(uint32_t) json_string.size()};
+    // big endian
+    data_string.push_back((ptree_payload_size >> 24) & 0xFF);
+    data_string.push_back((ptree_payload_size >> 16) & 0xFF);
+    data_string.push_back((ptree_payload_size >> 8) & 0xFF);
+    data_string.push_back(ptree_payload_size & 0xFF);
+    data_string.insert(data_string.end(), json_string.begin(), json_string.end());
+    dta.m_data.serialize(data_string);
 }
 
 // *********************************************************************
@@ -134,7 +136,8 @@ struct Link {
 // PROPERTY MANAGEMENT HELPER MACROS AND FUNCTIONS
 // *********************************************************************
 template<typename M>
-bool set_field_value_from_string(M* field, std::string value) {
+bool set_field_value_from_string(M* field, std::string value)
+{
     std::stringstream ss;
     M tmp;
     ss << value;
@@ -148,7 +151,8 @@ bool set_field_value_from_string(M* field, std::string value) {
 }
 
 template<>
-bool set_field_value_from_string(std::string* field, std::string value) {
+bool set_field_value_from_string(std::string* field, std::string value)
+{
     *field = value;
     return true;
 }
@@ -200,7 +204,8 @@ class BaseModule {
 public:
     BaseModule(const std::string& mid)
         : m_module_mutex{new std::mutex},
-    m_module_id {mid} {
+    m_module_id {mid}
+    {
         sm_instances.push_back(this);
     }
 
@@ -209,7 +214,8 @@ public:
     m_module_id{o.m_module_id},
     m_sinks{o.m_sinks} {}
 
-    BaseModule& operator=(const BaseModule& o) {
+    BaseModule& operator=(const BaseModule& o)
+    {
         if (m_module_mutex == nullptr) {
             delete m_module_mutex;
         }
@@ -218,20 +224,24 @@ public:
         m_module_id = o.m_module_id;
     }
 
-    virtual ~BaseModule() {
+    virtual ~BaseModule()
+    {
         sm_instances.erase(std::remove(sm_instances.begin(), sm_instances.end(), this), sm_instances.end());
     }
 
     /* Module locking methods */
-    void lock_module() {
+    void lock_module()
+    {
         m_module_mutex->lock();
     }
 
-    void unlock_module() {
+    void unlock_module()
+    {
         m_module_mutex->unlock();
     }
 
-    bool check_reconfigure_module() {
+    bool check_reconfigure_module()
+    {
         if (m_do_reconfigure_module) {
             m_do_reconfigure_module = false;
             return true;
@@ -240,13 +250,15 @@ public:
         }
     }
 
-    void set_reconfigure_module() {
+    void set_reconfigure_module()
+    {
         m_do_reconfigure_module = true;
     }
-    
-    void clear_reconfigure_module() {
-		m_do_reconfigure_module = false;
-	}
+
+    void clear_reconfigure_module()
+    {
+        m_do_reconfigure_module = false;
+    }
 
 #define synchronized_scope() std::unique_lock<std::mutex> ___lock(*m_module_mutex);
 
@@ -262,7 +274,8 @@ public:
         }
     }
 
-    static void display_help_all() {
+    static void display_help_all()
+    {
         // Only the help of not yet initialized modules will be "shown"
         boost::program_options::options_description desc;
         for (auto i : sm_instances) {
@@ -275,7 +288,8 @@ public:
         std::cerr << desc << std::endl;
     }
 
-    static boost::program_options::variables_map setup_cli_all(int argc, char* argv[]) {
+    static boost::program_options::variables_map setup_cli_all(int argc, char* argv[])
+    {
         boost::program_options::options_description desc;
         for (auto i : sm_instances) {
             std::string cname {i->getType()};
@@ -299,7 +313,8 @@ public:
     }
 
     /* Data processing method */
-    void submit_data(Packet<T>& dta, const std::string& channel = "default") {
+    void submit_data(Packet<T>& dta, const std::string& channel = "default")
+    {
         auto it{m_sinks.find(channel)};
         if (it != m_sinks.end()) {
             for(auto& s : it->second) {
@@ -336,9 +351,9 @@ public:
 
 
     /* Dynamic property management methods */
-    std::string read_property(const std::string& name, const std::string& channel = "default") const {
+    std::string read_property(const std::string& name, const std::string& channel = "default") const
+    {
         std::stringstream ss;
-        bool first{true};
         auto it{m_sinks.find(channel)};
         if (it != m_sinks.end()) {
             bool first{true};
@@ -359,7 +374,8 @@ public:
         return ss.str();
     }
 
-    std::string write_property(const std::string& name, const std::string& value, const std::string& channel = "default") {
+    std::string write_property(const std::string& name, const std::string& value, const std::string& channel = "default")
+    {
         std::stringstream ss;
         bool first{true};
         auto it{m_sinks.find(channel)};
@@ -380,7 +396,8 @@ public:
         return ss.str();
     }
 
-    std::string enumerate_properties(const std::string& channel = "default") const {
+    std::string enumerate_properties(const std::string& channel = "default") const
+    {
         std::stringstream ss;
         bool first{true};
         auto it{m_sinks.find(channel)};
@@ -400,7 +417,7 @@ public:
         }
         return ss.str();
     }
-    
+
     virtual void flush() {}
 
 
@@ -419,7 +436,8 @@ public:
         m_sinks.clear();
     }
 
-    BaseModule<T>& operator >> (std::shared_ptr<BaseModule<T> > sink) {
+    BaseModule<T>& operator >> (std::shared_ptr<BaseModule<T> > sink)
+    {
         return connect_sink(sink);
     }
 
@@ -433,11 +451,14 @@ public:
     /* Pipeline duplication methods */
 
     /* Create a clone of this object */
-    virtual std::shared_ptr<BaseModule<T> > clone() {
+    virtual std::shared_ptr<BaseModule<T> > clone() const
+    {
         throw std::runtime_error::runtime_error ("Clone not correctly implemented for this module");
+        return nullptr;
     };
 
-    std::string get_module_id() {
+    std::string get_module_id()
+    {
         return m_module_id;
     }
 
@@ -446,24 +467,30 @@ public:
     virtual void setup_cli(boost::program_options::options_description& desc) const {};
     virtual void process_cli(boost::program_options::variables_map& vm) {};
     virtual void initialize() {};
-    virtual void start_processing() {
+    virtual void start_processing()
+    {
         throw std::runtime_error::runtime_error("Processing method must be overridden");
     };
-    virtual void on_incoming_data(Packet<T>& dta, const std::string& channel) {
+    virtual void on_incoming_data(Packet<T>& dta, const std::string& channel)
+    {
         submit_data(dta, channel);
     };
-    virtual std::string on_read_property(const std::string& name) const {
+    virtual std::string on_read_property(const std::string& name) const
+    {
         return "";
     };
     // Note: each module is responsible for making the following call thread safe
-    virtual std::string on_write_property(const std::string& name, const std::string& value) {
+    virtual std::string on_write_property(const std::string& name, const std::string& value)
+    {
         return "";
     };
-    virtual std::string on_enumerate_properties() const {
+    virtual std::string on_enumerate_properties() const
+    {
         return "";
     };
 
-    virtual std::string getType() const {
+    virtual std::string getType() const
+    {
         return "Generic BaseModule";
     };
 
@@ -472,9 +499,10 @@ protected:
     static std::set<std::string> sm_instances_classes;
 
     std::mutex* m_module_mutex{nullptr};
+    std::string m_module_id;
+
     std::unordered_map<std::string,std::vector<Link<T> > > m_sinks;
 
-    std::string m_module_id;
     bool m_do_reconfigure_module{true};
 };
 
@@ -491,21 +519,23 @@ class Module : public BaseModule<T> {
 public:
     Module(const std::string& mid) : BaseModule<T>(mid) {}
 
-    virtual std::shared_ptr<BaseModule<T> > clone() {
+    std::shared_ptr<BaseModule<T> > clone() const override
+    {
         auto ptr = new D {static_cast<D const&>(*this)};
         if (ptr == nullptr) {
             throw std::runtime_error::runtime_error ("Failed to allocate memory for new object");
+            return nullptr;
         } else {
             auto head = std::shared_ptr<BaseModule<T> > {ptr};
             head->clear_channels();
-            for (auto c : BaseModule<T>::get_channels()) {
+            for (const auto& c : BaseModule<T>::get_channels()) {
                 if ((c.length() >= 1) && (c.at(0) == '_')) { // channel starting with _
-                    for (auto s : BaseModule<T>::m_sinks[c]) {
+                    for (const auto& s : BaseModule<T>::m_sinks.find(c)->second) {
                         head->connect_sink(s.m_module, c);
                     }
                     continue;
                 }
-                for (auto s : BaseModule<T>::m_sinks[c]) {
+                for (const auto& s : BaseModule<T>::m_sinks.find(c)->second) {
                     head->connect_sink(s.m_module->clone(), c);
                 }
             }
@@ -513,7 +543,8 @@ public:
         }
     }
 
-    std::string getType() const override {
+    std::string getType() const override
+    {
         return typeid(D).name();
     }
 };
@@ -522,22 +553,25 @@ public:
 // PARALLEL PROCESSOR MODULE TEMPLATE
 // *********************************************************************
 template<typename J>
-class ParallelProcessorBaseModule : public BaseModule<J>
-{
+class ParallelProcessorBaseModule : public BaseModule<J> {
 public:
     ParallelProcessorBaseModule(const std::string& mid) : BaseModule<J>(mid) {}
 
-    ~ParallelProcessorBaseModule() {
+    ~ParallelProcessorBaseModule()
+    {
         for (auto& t : m_thread_pool) {
             t.detach();
         }
     }
 
-    std::shared_ptr<BaseModule<J> > clone() {
+    std::shared_ptr<BaseModule<J> > clone() const
+    {
         throw std::runtime_error::runtime_error ("Cannot clone Parallel Processor object");
+        return nullptr;
     }
 
-    void start_processing() {
+    void start_processing()
+    {
         unsigned long sink_count{this->m_sinks["default"].size()};
         if (sink_count) {
             for(auto s : this->m_sinks["default"]) {
@@ -547,12 +581,14 @@ public:
         for(;;) {};
     }
 
-    std::string getType() {
+    std::string getType()
+    {
         return typeid(ParallelProcessorBaseModule).name();
     }
 
 protected:
-    void processor_fn(std::shared_ptr<BaseModule<J>> mod) {
+    void processor_fn(std::shared_ptr<BaseModule<J>> mod)
+    {
         mod->start_processing();
     }
 
@@ -565,21 +601,22 @@ private:
 // FORK MODULE TEMPLATE
 // *********************************************************************
 template<typename J, bool stateless = false>
-class ForkBaseModule : public BaseModule<J>
-{
+class ForkBaseModule : public BaseModule<J> {
 
 public:
     ForkBaseModule(const std::string& mid) : BaseModule<J>(mid) {}
 
-    ~ForkBaseModule() {
-		assert(m_incoming_queue.size() == 0);
-		assert(m_outgoing_queue.size() == 0);
+    ~ForkBaseModule()
+    {
+        assert(m_incoming_queue.size() == 0);
+        assert(m_outgoing_queue.size() == 0);
         for (auto& t : m_thread_pool) {
             t.detach();
         }
     }
 
-    void initialize() {
+    void initialize()
+    {
         int n_threads {(int) std::thread::hardware_concurrency()};
         if (m_thread_limit < 0) m_thread_limit = n_threads;
         n_threads = std::min(n_threads, m_thread_limit);
@@ -622,7 +659,7 @@ public:
                 copy.m_data = dta.m_data;
                 copy.m_properties = dta.m_properties;
                 {
-					m_incoming_buffer_size++;
+                    m_incoming_buffer_size++;
                     std::unique_lock<std::mutex> lock(m_incoming_queue_mutex);
                     m_incoming_queue.push(copy);
                 }
@@ -633,7 +670,7 @@ public:
                 this->submit_data(dta);
             } else {
                 {
-					m_outgoing_buffer_size++;
+                    m_outgoing_buffer_size++;
                     std::unique_lock<std::mutex> lock(m_outgoing_queue_mutex);
                     m_outgoing_queue.push(dta);
                 }
@@ -642,34 +679,40 @@ public:
         }
     }
 
-    std::string getType() {
+    std::string getType()
+    {
         return typeid(ForkBaseModule).name();
     }
 
-    std::shared_ptr<BaseModule<J> > clone() {
+    std::shared_ptr<BaseModule<J> > clone()
+    {
         throw std::runtime_error::runtime_error ("Cannot clone fork base module");
     }
 
-    void setup_cli(boost::program_options::options_description& desc) const {
+    void setup_cli(boost::program_options::options_description& desc) const
+    {
         boost::program_options::options_description pex("Parallel fork executor options");
         pex.add_options()
         ("threads", boost::program_options::value<int>()->default_value(-1), "force number of threads");
         desc.add(pex);
     }
 
-    void process_cli(boost::program_options::variables_map& vm) {
+    void process_cli(boost::program_options::variables_map& vm)
+    {
         m_thread_limit = vm["threads"].as<int>();
     }
-    
-    void flush() override {
-		while(m_incoming_buffer_size != 0 || m_outgoing_buffer_size != 0) {
-			std::this_thread::yield();
-		};
-	}
+
+    void flush() override
+    {
+        while(m_incoming_buffer_size != 0 || m_outgoing_buffer_size != 0) {
+            std::this_thread::yield();
+        };
+    }
 
 
 protected:
-    void executor_fn(std::shared_ptr<BaseModule<J> > head) {
+    void executor_fn(std::shared_ptr<BaseModule<J> > head)
+    {
         for(;;) {
             Packet<J> du;
             {
@@ -683,7 +726,8 @@ protected:
         }
     }
 
-    void collector_fn() {
+    void collector_fn()
+    {
         for(;;) {
             Packet<J> du;
             {
@@ -699,7 +743,7 @@ protected:
     }
 
 private:
-	std::atomic_int m_incoming_buffer_size{0}, m_outgoing_buffer_size{0};
+    std::atomic_int m_incoming_buffer_size{0}, m_outgoing_buffer_size{0};
     int m_thread_limit {-1};
     std::vector<std::thread> m_thread_pool;
     std::condition_variable incoming_data_available_cv;
@@ -715,8 +759,7 @@ private:
 // *********************************************************************
 
 template<typename J>
-class JoinBaseModule : public Module<JoinBaseModule<J>, J>
-{
+class JoinBaseModule : public Module<JoinBaseModule<J>, J> {
 public:
     JoinBaseModule(const std::string& mid) : Module<JoinBaseModule, J>(mid) {}
 
@@ -731,8 +774,7 @@ public:
 // *********************************************************************
 
 template<typename J>
-class CallbackSinkModule : public Module<CallbackSinkModule<J>, J>
-{
+class CallbackSinkModule : public Module<CallbackSinkModule<J>, J> {
 public:
     CallbackSinkModule(const std::string& mid) : Module<CallbackSinkModule, J>(mid) {}
 

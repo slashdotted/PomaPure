@@ -62,7 +62,7 @@ private:
     std::condition_variable outgoing_data_available_cv;
     std::mutex m_outgoing_queue_mutex;
     std::queue<PomaPacketType> m_outgoing_queue;
-    int m_warn_size{1024};
+    unsigned int m_warn_size{1024};
     int m_packetskip{1};
     bool m_dontcopy{false};
 };
