@@ -37,33 +37,44 @@
    MODIFY THE NEXT PART TO SUIT YOUR NEEDS
    ********************************************************************/
 #include <iostream>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 
 struct MyData : public poma::Serializable {
+	cv::Mat m_image;
 
     MyData() = default;
 
     MyData(const MyData& o)
     {
-        // copy constructor
+        o.m_image.copyTo(m_image);
     }
 
     MyData& operator=(const MyData& o)
     {
-        // copy assign operator
+        o.m_image.copyTo(m_image);
         return *this;
     }
 
     void serialize(std::string& output) const override
     {
-        std::string sample{"Hello world"};
-        output.insert(output.end(), sample.begin(), sample.end());
+		if (!m_image.empty()) {
+			std::vector<unsigned char> image_buffer;
+			cv::imencode(".png", m_image, image_buffer, { CV_IMWRITE_PNG_COMPRESSION, 5 });
+			std::string data{image_buffer.begin(), image_buffer.end()};
+			output.insert(output.end(), data.begin(), data.end());
+		}
     }
 
     void deserialize(const std::string::const_iterator& from, const std::string::const_iterator& to) override
     {
-        std::string sample;
-        sample.insert(sample.end(), from, to);
+		if (from != to) {
+			std::vector<unsigned char> image_buffer;
+			image_buffer.insert(image_buffer.end(), from, to);
+			cv::InputArray image_array{image_buffer};
+			m_image = cv::imdecode(image_array, CV_LOAD_IMAGE_COLOR);
+		}
     }
 
 };

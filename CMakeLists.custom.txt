@@ -2,4 +2,6 @@
 # Insert here (use CUSTOM_TARGET_LINK_LIBS to link additional libraries)
 # **********************************************************************
 set(BOOST_ROOT /usr/local)
-set(CUSTOM_TARGET_LINK_LIBS "${CUSTOM_TARGET_LINK_LIBS}")
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+set(CUSTOM_TARGET_LINK_LIBS "${OpenCV_LIBRARIES}")

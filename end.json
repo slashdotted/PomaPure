@@ -1,0 +1,23 @@
+{
+"source" : "0mqsource",
+"modules" : {
+		"0mqsource" : {
+			"type": "ZeroMQSource"
+		},
+		"buffer" : {
+			"type": "Buffer"
+		},
+		"ocr" : {
+			"type": "OCR"
+		},
+		"viewer" : {
+			"type": "Viewer"
+		}
+},
+"links" :
+    [
+    { "from" : "0mqsource", "to" : "buffer" },
+    { "from" : "buffer", "to" : "ocr" },
+    { "from" : "ocr", "to" : "viewer" }
+    ]
+}
