@@ -20,7 +20,7 @@ First install the required dependencies `sudo apt-get install --assume-yes build
 Create the required target directories with  `sudo mkdir -p /usr/local/share/doc` and `sudo mkdir -p /usr/local/lib`
 Configure the library path with `sudo echo  "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usrlocallib.conf && sudo ldconfig`.
 
-Download the latest version of CMake from https://cmake.org/download/ and uncompress it on your computer. In a terminal, move to the directory where CMake was extracted and execute `./bootstrap --system-curl --prefix=/usr/local`. Then you can proceed with `make`. To create a package for CMake use `sudo checkinstall -y --pkgname poma-cmake --pkgversion 1 --pkgrelease`. Don't forget to add /usr/local/bin to your PATH before continuing!
+Download the latest version of CMake from https://cmake.org/download/ and uncompress it on your computer. In a terminal, move to the directory where CMake was extracted and execute `./bootstrap --system-curl --prefix=/usr/local`. Then you can proceed with `make`. To create a package for CMake use `sudo checkinstall -y --pkgname poma-cmake --pkgversion 1 --pkgrelease 1`. Don't forget to add /usr/local/bin to your PATH before continuing (on Ubuntu it should be already set)!
 
 ### Install Boost (>= 1.63.0)
 
