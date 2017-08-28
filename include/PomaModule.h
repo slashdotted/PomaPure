@@ -89,7 +89,11 @@ struct Serializable {
 template<typename T>
 void deserialize(Packet<T>& dta, const std::string& data_string)
 {
-    uint32_t ptree_payload_size{(uint32_t) ((data_string.at(0) << 24) + (data_string.at(1) << 16) + (data_string.at(2) << 8) + data_string.at(3))};
+    unsigned char b0 = (unsigned char) data_string.at(0);
+    unsigned char b1 = (unsigned char) data_string.at(1);
+    unsigned char b2 = (unsigned char) data_string.at(2);
+    unsigned char b3 = (unsigned char) data_string.at(3);
+    uint32_t ptree_payload_size{(uint32_t) ((b0 << 24)+(b1 << 16)+(b2 << 8)+ b3)};
     std::string json_string{data_string.substr (4, ptree_payload_size)};
     std::stringstream iss{json_string};
     boost::property_tree::json_parser::read_json(iss, dta.m_properties);
@@ -268,8 +272,12 @@ public:
         for (auto i : sm_instances) {
             try {
                 i->initialize();
+            } catch (std::exception e) {
+                std::cerr << "Failed to initialize module " << typeid(*i).name() << ": " << e.what() << std::endl;
+                throw e;
             } catch (...) {
                 std::cerr << "Failed to initialize module " << typeid(*i).name() << std::endl;
+                throw std::runtime_error ("Failed to initialize module");
             }
         }
     }
@@ -342,8 +350,12 @@ public:
                     } else {
                         s.m_module->on_incoming_data(dta, channel);
                     }
+                } catch(std::exception const& e) {
+                    std::cerr << "Exception " << e.what() << " while processing data on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw e;
                 } catch(...) {
-                    std::cerr << "Exception while processing data on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    std::cerr << "Unknown exception while processing data on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw std::runtime_error ("Processing failed");
                 }
             }
         }
@@ -365,8 +377,12 @@ public:
                         first = false;
                         ss << val;
                     }
+                } catch(std::exception const& e) {
+                    std::cerr << "Exception " << e.what() << " while reading property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw e;
                 } catch(...) {
-                    std::cerr << "Exception while reading property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    std::cerr << "Unknown exception while reading property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw std::runtime_error ("Failed to read property");
                 }
             }
 
@@ -388,8 +404,12 @@ public:
                         first = false;
                         ss << val;
                     }
+                } catch(std::exception const& e) {
+                    std::cerr << "Exception " << e.what() << " while writing property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw e;
                 } catch(...) {
-                    std::cerr << "Exception while writing property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    std::cerr << "Unknown exception while writing property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw std::runtime_error ("Failed to write property");
                 }
             }
         }
@@ -410,8 +430,12 @@ public:
                         ss << data;
                         first = false;
                     }
+                } catch(std::exception const& e) {
+                    std::cerr << "Exception " << e.what() << " while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw e;
                 } catch(...) {
-                    std::cerr << "Exception while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    std::cerr << "Unknown exception while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw std::runtime_error ("Failed to enumerate properties");
                 }
             }
         }
@@ -453,7 +477,7 @@ public:
     /* Create a clone of this object */
     virtual std::shared_ptr<BaseModule<T> > clone() const
     {
-        throw std::runtime_error::runtime_error ("Clone not correctly implemented for this module");
+        throw std::runtime_error ("Clone not correctly implemented for this module");
         return nullptr;
     };
 
@@ -469,7 +493,7 @@ public:
     virtual void initialize() {};
     virtual void start_processing()
     {
-        throw std::runtime_error::runtime_error("Processing method must be overridden");
+        throw std::runtime_error("Processing method must be overridden");
     };
     virtual void on_incoming_data(Packet<T>& dta, const std::string& channel)
     {
@@ -523,7 +547,7 @@ public:
     {
         auto ptr = new D {static_cast<D const&>(*this)};
         if (ptr == nullptr) {
-            throw std::runtime_error::runtime_error ("Failed to allocate memory for new object");
+            throw std::runtime_error ("Failed to allocate memory for new object");
             return nullptr;
         } else {
             auto head = std::shared_ptr<BaseModule<T> > {ptr};
@@ -566,7 +590,7 @@ public:
 
     std::shared_ptr<BaseModule<J> > clone() const
     {
-        throw std::runtime_error::runtime_error ("Cannot clone Parallel Processor object");
+        throw std::runtime_error ("Cannot clone Parallel Processor object");
         return nullptr;
     }
 
@@ -636,16 +660,18 @@ public:
                         std::shared_ptr<BaseModule<J> > chead = head->clone();
                         m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, chead});
                     }
-
+                } catch(std::exception const& e) {
+                    std::cerr << "Exception " << e.what() << " while cloning module" << std::endl;
+                    throw std::runtime_error ("Failed to clone module");
                 } catch (...) {
-                    throw std::runtime_error::runtime_error ("Failed to clone module");
+                    throw std::runtime_error ("Failed to clone module");
                 }
             }
             m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, head});
         } else if (this->m_sinks["template"].size() == 0) {
-            throw std::runtime_error::runtime_error ("Parallel pipeline template cannot be empty");
+            throw std::runtime_error ("Parallel pipeline template cannot be empty");
         } else {
-            throw std::runtime_error::runtime_error ("Invalid parallel pipeline template");
+            throw std::runtime_error ("Invalid parallel pipeline template");
         }
     }
 
@@ -686,7 +712,7 @@ public:
 
     std::shared_ptr<BaseModule<J> > clone()
     {
-        throw std::runtime_error::runtime_error ("Cannot clone fork base module");
+        throw std::runtime_error ("Cannot clone fork base module");
     }
 
     void setup_cli(boost::program_options::options_description& desc) const

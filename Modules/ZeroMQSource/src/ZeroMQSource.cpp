@@ -92,14 +92,10 @@ void ZeroMQSource::serve_fn()
 {
     for (;;) {
         std::string data_string{s_recv(*m_socket)};
-        try {
-            PomaPacketType dta;
-            deserialize(dta, data_string);
-            std::string channel{dta.m_properties.get("zeromq.channel", "default")};
-            s_send(*m_socket, "ACK");
-            submit_data(dta, channel);
-        } catch (...) {
-
-        }
+		PomaPacketType dta;
+		deserialize(dta, data_string);
+		std::string channel{dta.m_properties.get("zeromq.channel", "default")};
+		submit_data(dta, channel);
+        s_send(*m_socket, "ACK");
     }
 }
