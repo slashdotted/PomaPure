@@ -10,12 +10,12 @@ To compile you need to satisfy the following dependencies:
 
 ## Install instructions
 
-These are the instructions to compile the framework on a Ubuntu/Debian machine. To keep you system clean we are going to package additional software into deb files.
+These are the instructions to compile the framework on a Ubuntu/Debian machine. To keep you system clean we are going to package additional software into deb files. This procedure was tested on a clean Ubuntu MATE 16.04.2 install.
 
 ### Install CMake
 We are going to install CMake from https://cmake.org/files/: before continuing ensure that you have no CMake package installed on your system.
 
-First install the required dependencies `sudo apt-get install --assume-yes build-essential checkinstall fakeroot git pkg-config unzip libcurl4-openssl-dev`
+First install the required dependencies `sudo apt-get install --assume-yes build-essential checkinstall fakeroot git pkg-config unzip libcurl4-openssl-dev libz-dev`
 
 Create the required target directories with  `sudo mkdir -p /usr/local/share/doc` and `sudo mkdir -p /usr/local/lib`
 Configure the library path with `sudo echo  "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usrlocallib.conf && sudo ldconfig`.
