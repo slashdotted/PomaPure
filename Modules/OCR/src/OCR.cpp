@@ -26,7 +26,7 @@ void OCR::on_incoming_data(PomaPacketType& dta, const std::string& channel)
 
 OCR::~OCR()
 {
-	if (!ocr_engine) {
+	if (ocr_engine != nullptr) {
 		ocr_engine->Clear();
 		ocr_engine->End();
 		delete ocr_engine;
