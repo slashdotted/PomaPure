@@ -20,7 +20,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
 endif(CMAKE_COMPILER_IS_GNUCC)
 
 add_library(Loader SHARED ${SOURCES_LIB})
-target_link_libraries(Loader ${Boost_LIBRARIES} ${CMAKE_DL_LIBS})
+target_link_libraries(Loader ${Boost_LIBRARIES} ${CMAKE_DL_LIBS} ${CUSTOM_TARGET_LINK_LIBS})
 
 add_executable(PomaLoader ${SOURCES_APP})
 target_link_libraries(PomaLoader Loader)
