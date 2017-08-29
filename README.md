@@ -6,7 +6,7 @@ A description of the base modules shipped with this tool is in the Documentation
 To compile you need to satisfy the following dependencies:
 
 - CMake (>= 3.7)
-- Boost >= 1.63.0
+- Boost >= 1.64.0
 - (for distributed processing) 0MQ (ZeroMQ)
 
 ## Install instructions (Ubuntu/Debian)
@@ -23,10 +23,10 @@ Configure the library path with `sudo echo  "/usr/local/lib" | sudo tee /etc/ld.
 
 Download the latest version of CMake from https://cmake.org/download/ and uncompress it on your computer: `wget https://cmake.org/files/v3.9/cmake-3.9.1.tar.gz && tar xvfz cmake-3.9.1.tar.gz`. In a terminal, move to the directory where CMake was extracted `cd cmake-3.9.1` and execute `./bootstrap --system-curl --prefix=/usr/local`. Then you can proceed with `make`. To create a package for CMake use `sudo checkinstall -y --pkgname poma-cmake --pkgversion 1 --pkgrelease 1`. Don't forget to add /usr/local/bin to your PATH before continuing (on Ubuntu it should be already set)!
 
-### Install Boost (>= 1.63.0)
+### Install Boost (>= 1.64.0)
 
-Download Boost from https://sourceforge.net/projects/boost/files/boost/1.63.0/boost_1_63_0.tar.bz2
-Uncompress the archive and run `./bootstrap.sh --with-libraries=filesystem,program_options,system,chrono,thread --exec-prefix=/usr/local`. When building is completed, run `sudo checkinstall -y --pkgname poma-boost --pkgversion 1 --pkgrelease 1  ./b2 install --prefix=/usr/local` to install and package Boost
+Download Boost from https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2 and
+uncompress the archive: `wget https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2 && tar xvjpf boost_1_64_0.tar.bz2 && cd boost_1_64_0` .Run `./bootstrap.sh --with-libraries=filesystem,program_options,system,chrono,thread --exec-prefix=/usr/local`. When building is completed, run `sudo checkinstall -y --pkgname poma-boost --pkgversion 1 --pkgrelease 1  ./b2 install --prefix=/usr/local` to install and package Boost
 
 ### Install ZeroMQ
 Install the required tools to compile ZeroMQ with `sudo apt-get install autoconf automake libtool`
