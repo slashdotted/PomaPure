@@ -42,7 +42,7 @@
 
 
 struct MyData : public poma::Serializable {
-	cv::Mat m_image;
+    cv::Mat m_image;
 
     MyData() = default;
 
@@ -59,22 +59,22 @@ struct MyData : public poma::Serializable {
 
     void serialize(std::string& output) const override
     {
-		if (!m_image.empty()) {
-			std::vector<unsigned char> image_buffer;
-			cv::imencode(".png", m_image, image_buffer, { CV_IMWRITE_PNG_COMPRESSION, 5 });
-			std::string data{image_buffer.begin(), image_buffer.end()};
-			output.insert(output.end(), data.begin(), data.end());
-		}
+        if (!m_image.empty()) {
+            std::vector<unsigned char> image_buffer;
+            cv::imencode(".png", m_image, image_buffer, { CV_IMWRITE_PNG_COMPRESSION, 5 });
+            std::string data{image_buffer.begin(), image_buffer.end()};
+            output.insert(output.end(), data.begin(), data.end());
+        }
     }
 
     void deserialize(const std::string::const_iterator& from, const std::string::const_iterator& to) override
     {
-		if (from != to) {
-			std::vector<unsigned char> image_buffer;
-			image_buffer.insert(image_buffer.end(), from, to);
-			cv::InputArray image_array{image_buffer};
-			m_image = cv::imdecode(image_array, CV_LOAD_IMAGE_COLOR);
-		}
+        if (from != to) {
+            std::vector<unsigned char> image_buffer;
+            image_buffer.insert(image_buffer.end(), from, to);
+            cv::InputArray image_array{image_buffer};
+            m_image = cv::imdecode(image_array, CV_LOAD_IMAGE_COLOR);
+        }
     }
 
 };

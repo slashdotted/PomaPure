@@ -28,25 +28,66 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef HOSTCONFIGGENERATOR_H
+#define HOSTCONFIGGENERATOR_H
 
-#include "PomaLoader.h"
+#include <unordered_map>
+#include <string>
+#include <istream>
+#include <vector>
+#include <sstream>
+#include <set>
 
-int main(int argc, char* argv[])
-{
-    try {
-        poma::Loader l;
-        l.configure(argc, argv);
-        l.initialize();
-        l.start_processing();
-        l.flush();
-    } catch (const boost::exception& e) {
-        std::cerr << "Exception: " << boost::diagnostic_information(e) << std::endl;
-        exit(-1);
-    } catch (const std::exception& e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
-        exit(-1);
-    } catch (...) {
-        std::cerr << "Unknown exception" << std::endl;
-        exit(-2);
-    }
+namespace poma {
+
+class HostConfigGenerator {
+public:
+    HostConfigGenerator(std::istream& pipeline, unsigned int base_port = 6000);
+    std::string operator[](const std::string& host) const;
+    std::set<std::string> hosts() const;
+    std::set<std::string> modules(const std::string& host) const;
+
+private:
+    struct Module {
+        static int counter;
+        static std::string source(const std::string& host)
+        {
+            std::stringstream ss;
+            ss << "__parallel_source_" << host;
+            return ss.str();
+        }
+        static std::string unique(const std::string& prefix)
+        {
+            std::stringstream ss;
+            ss << prefix << ++counter;
+            return ss.str();
+        }
+        static std::string address(const std::string& host, unsigned int port)
+        {
+            std::stringstream ss;
+            ss << "tcp://" << host << ":" << port;
+            return ss.str();
+        }
+        std::string mid;
+        std::string mtype;
+        std::string mhost{"localhost"};
+        std::vector<std::string> cparams;
+        std::unordered_map<std::string,std::string> mparams;
+    };
+
+    struct Link {
+        std::string fid;
+        std::string tid;
+        std::string channel{"default"};
+        bool debug{false};
+    };
+
+    void die(const std::string& msg);
+    std::unordered_multimap<std::string,Module> m_host_modules_map;
+    std::unordered_multimap<std::string,Link> m_host_link_map;
+    std::unordered_map<std::string,std::string> m_module_host_map;
+};
+
 }
+
+#endif

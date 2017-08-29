@@ -6,14 +6,17 @@ set(BOOST_ROOT "/usr/local")
 set(Boost_USE_STATIC_LIBS OFF) 
 set(Boost_USE_MULTITHREADED ON)  
 set(Boost_USE_STATIC_RUNTIME OFF) 
-find_package( Boost 1.63.0 REQUIRED COMPONENTS system thread program_options filesystem chrono )
-include_directories( ${Boost_INCLUDE_DIRS} )
+find_package( Boost 1.64.0 REQUIRED COMPONENTS system thread program_options filesystem chrono )
+include_directories( ${Boost_INCLUDE_DIRS} "appinclude" )
+include_directories( ${Boost_INCLUDE_DIRS} "depinclude" )
 
 include(CMakeLists.custom.txt)
 include_directories(include "${PROJECT_BINARY_DIR}")
 file(GLOB SOURCES_LIB "src/*.cpp")
 file(GLOB SOURCES_APP "appsrc/PomaLoader.cpp")
 file(GLOB SOURCES_EXAMPLE "appsrc/SampleEmbeddedPipeline.cpp")
+file(GLOB SOURCES_DEPLOYAPP "appsrc/PomaDeploy.cpp" "appsrc/HostConfigGenerator.cpp")
+file(GLOB SOURCES_SERVICEAPP "appsrc/PomaService.cpp")
 
 if(CMAKE_COMPILER_IS_GNUCC)
 	set (CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wpedantic")
@@ -27,4 +30,10 @@ target_link_libraries(PomaLoader Loader)
 
 add_executable(SampleEmbeddedPipeline ${SOURCES_EXAMPLE})
 target_link_libraries(SampleEmbeddedPipeline Loader)
+
+add_executable(PomaDeploy ${SOURCES_DEPLOYAPP})
+target_link_libraries(PomaDeploy Loader zmq)
+
+add_executable(PomaService ${SOURCES_SERVICEAPP})
+target_link_libraries(PomaService Loader zmq)
 

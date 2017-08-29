@@ -28,25 +28,59 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef POMASERVICE_H
+#define POMASERVICE_H
 
-#include "PomaLoader.h"
+#include <boost/process.hpp>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <boost/filesystem.hpp>
 
-int main(int argc, char* argv[])
-{
-    try {
-        poma::Loader l;
-        l.configure(argc, argv);
-        l.initialize();
-        l.start_processing();
-        l.flush();
-    } catch (const boost::exception& e) {
-        std::cerr << "Exception: " << boost::diagnostic_information(e) << std::endl;
-        exit(-1);
-    } catch (const std::exception& e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
-        exit(-1);
-    } catch (...) {
-        std::cerr << "Unknown exception" << std::endl;
-        exit(-2);
-    }
+namespace poma {
+
+class PomaJob {
+public:
+    PomaJob(const boost::filesystem::path& loader,
+            const boost::filesystem::path& modules,
+            const boost::filesystem::path& output_path,
+            const std::string& job_id,
+            const std::string& json_data);
+    virtual ~PomaJob();
+    pid_t pid() const;
+    bool kill();
+    bool is_running() const;
+    bool clear() const;
+    bool start();
+private:
+    std::string m_loader_path;
+    std::string m_modules_path;
+    std::string m_job_id;
+    std::string m_json_file;
+    std::string m_stdout_file;
+    std::string m_stderr_file;
+    boost::process::child* m_job{nullptr};
+};
+
+class PomaService {
+public:
+    PomaService(const boost::filesystem::path& loader_path,
+                const boost::filesystem::path& modules_path,
+                const boost::filesystem::path& output_path, unsigned int port = 5232);
+    void start_serving();
+
+protected:
+    std::string process_request(const std::string& req);
+
+private:
+    std::string build_reply(const std::string& msg);
+    boost::filesystem::path m_loader_path;
+    boost::filesystem::path m_modules_path;
+    boost::filesystem::path m_output_path;
+    unsigned int m_port{5232};
+    std::unordered_map<std::string,PomaJob*> m_jobs;
+};
+
 }
+
+#endif
