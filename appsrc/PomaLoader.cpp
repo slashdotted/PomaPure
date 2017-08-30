@@ -33,9 +33,20 @@
 
 int main(int argc, char* argv[])
 {
-    poma::Loader l;
-    l.configure(argc, argv);
-    l.initialize();
-    l.start_processing();
-    l.flush();
+    try {
+        poma::Loader l;
+        l.configure(argc, argv);
+        l.initialize();
+        l.start_processing();
+        l.flush();
+    } catch (const boost::exception& e) {
+        std::cerr << "Exception: " << boost::diagnostic_information(e) << std::endl;
+        exit(-1);
+    } catch (const std::exception& e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        exit(-1);
+    } catch (...) {
+        std::cerr << "Unknown exception" << std::endl;
+        exit(-2);
+    }
 }

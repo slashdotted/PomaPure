@@ -103,8 +103,7 @@ std::shared_ptr<PomaModuleType> Loader::get_instance(const std::string& type, co
 
 void Loader::die(const std::string& msg)
 {
-    std::cerr << msg << std::endl;
-    exit(-1);
+    throw std::runtime_error{msg};
 }
 
 void Loader::parse_json_config(std::istream& stream)
@@ -297,7 +296,7 @@ void Loader::configure(int argc, char* argv[])
     boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).allow_unregistered().run(), vm);
     try {
         boost::program_options::notify(vm);
-    } catch (std::exception &e) {
+    } catch (const std::exception& e) {
         std::cerr << desc << std::endl << e.what() << std::endl;
         exit(-1);
     }
@@ -306,7 +305,7 @@ void Loader::configure(int argc, char* argv[])
         if (boost::filesystem::is_directory(boost::filesystem::status("Modules"))) {
             enumerate_libraries("Modules");
         } else {
-            std::cerr << "Modules" << std::endl;
+            std::cerr << "Invalid plugin directory" << std::endl;
         }
     } else {
         if (boost::filesystem::is_directory(boost::filesystem::status(vm["plugindir"].as<std::string>()))) {
@@ -616,6 +615,7 @@ void Loader::configure(int argc, char* argv[])
         std::cout << "</div></body></html>" << std::endl;
         exit(0);
     } else {
+		std::cerr << desc << std::endl;
         die("invalid command line arguments");
     }
 }

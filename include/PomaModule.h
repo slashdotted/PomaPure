@@ -60,6 +60,8 @@
 #include <boost/foreach.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/exception/diagnostic_information.hpp>
+#include <boost/exception_ptr.hpp>
 #include <boost/dll/alias.hpp>
 #include <boost/function.hpp>
 #include <boost/config.hpp>
@@ -272,12 +274,12 @@ public:
         for (auto i : sm_instances) {
             try {
                 i->initialize();
+            } catch (const boost::exception& e) {
+                throw std::runtime_error(boost::diagnostic_information(e));
             } catch (std::exception e) {
-                std::cerr << "Failed to initialize module " << typeid(*i).name() << ": " << e.what() << std::endl;
-                throw e;
+                throw std::runtime_error (std::string{"Failed to initialize module "} + typeid(*i).name() + ":" + e.what());
             } catch (...) {
-                std::cerr << "Failed to initialize module " << typeid(*i).name() << std::endl;
-                throw std::runtime_error ("Failed to initialize module");
+                throw std::runtime_error (std::string{"Failed to initialize module: "} + typeid(*i).name());
             }
         }
     }
@@ -310,9 +312,10 @@ public:
         try {
             boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).allow_unregistered().run(), vm);
             boost::program_options::notify(vm);
+        } catch (const boost::exception& e) {
+            throw std::runtime_error(boost::diagnostic_information(e));
         } catch (std::exception &e) {
-            std::cerr << desc << std::endl << e.what() << std::endl;
-            exit(-1);
+            throw std::runtime_error(std::string{"Failed to setup command line arguments: "} + e.what());
         }
         for (auto i : sm_instances) {
             i->process_cli(vm);
@@ -334,12 +337,12 @@ public:
                                   << " on " << channel << std::endl;
                         try {
                             s.m_module->on_incoming_data(dta, channel);
-                        } catch(std::exception const& e) {
-                            std::cerr << "DEBUG: Exception " << e.what() << " while processing data in module " << s.m_module->m_module_id << std::endl;
-                            exit(1);
+                        } catch (const boost::exception& e) {
+                            throw std::runtime_error(boost::diagnostic_information(e));
+                        } catch(const std::exception& e) {
+                            throw std::runtime_error(std::string{"DEBUG: Exception "} + e.what() + " while processing data in module " + s.m_module->m_module_id);
                         } catch(...) {
-                            std::cerr << "DEBUG: Exception ??? while processing data in module " << s.m_module->m_module_id << std::endl;
-                            exit(1);
+                            throw std::runtime_error(std::string{"DEBUG: Exception ??? while processing data in module "} + s.m_module->m_module_id);
                         }
                         auto after = std::chrono::high_resolution_clock::now();
                         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(after - before).count();
@@ -350,12 +353,12 @@ public:
                     } else {
                         s.m_module->on_incoming_data(dta, channel);
                     }
-                } catch(std::exception const& e) {
-                    std::cerr << "Exception " << e.what() << " while processing data on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
-                    throw e;
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while processing data on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 } catch(...) {
-                    std::cerr << "Unknown exception while processing data on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
-                    throw std::runtime_error ("Processing failed");
+                    throw std::runtime_error(std::string{"Unknown exception while processing data on channel "} + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 }
             }
         }
@@ -377,12 +380,12 @@ public:
                         first = false;
                         ss << val;
                     }
-                } catch(std::exception const& e) {
-                    std::cerr << "Exception " << e.what() << " while reading property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
-                    throw e;
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while reading property " + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 } catch(...) {
-                    std::cerr << "Unknown exception while reading property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
-                    throw std::runtime_error ("Failed to read property");
+                    throw std::runtime_error(std::string{"Unknown exception while reading property "} + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 }
             }
 
@@ -404,12 +407,12 @@ public:
                         first = false;
                         ss << val;
                     }
-                } catch(std::exception const& e) {
-                    std::cerr << "Exception " << e.what() << " while writing property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
-                    throw e;
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while writing value " + value + " to property " + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 } catch(...) {
-                    std::cerr << "Unknown exception while writing property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
-                    throw std::runtime_error ("Failed to write property");
+                    throw std::runtime_error(std::string{"Unknown exception while writing value "} + value + " to property " + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 }
             }
         }
@@ -430,12 +433,12 @@ public:
                         ss << data;
                         first = false;
                     }
-                } catch(std::exception const& e) {
-                    std::cerr << "Exception " << e.what() << " while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
-                    throw e;
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while enumerating properties on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 } catch(...) {
-                    std::cerr << "Unknown exception while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
-                    throw std::runtime_error ("Failed to enumerate properties");
+                    throw std::runtime_error(std::string{"Unknown exception while enumerating properties on channel "} + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 }
             }
         }
@@ -477,11 +480,11 @@ public:
     /* Create a clone of this object */
     virtual std::shared_ptr<BaseModule<T> > clone() const
     {
-        throw std::runtime_error ("Clone not correctly implemented for this module");
+        throw std::runtime_error (std::string{"Clone not correctly implemented for this module: "} + m_module_id);
         return nullptr;
     };
 
-    std::string get_module_id()
+    std::string get_module_id() const
     {
         return m_module_id;
     }
@@ -547,7 +550,7 @@ public:
     {
         auto ptr = new D {static_cast<D const&>(*this)};
         if (ptr == nullptr) {
-            throw std::runtime_error ("Failed to allocate memory for new object");
+            throw std::runtime_error (std::string{"Failed to allocate memory for cloned object in module "} + this->get_module_id());
             return nullptr;
         } else {
             auto head = std::shared_ptr<BaseModule<T> > {ptr};
@@ -660,18 +663,19 @@ public:
                         std::shared_ptr<BaseModule<J> > chead = head->clone();
                         m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, chead});
                     }
-                } catch(std::exception const& e) {
-                    std::cerr << "Exception " << e.what() << " while cloning module" << std::endl;
-                    throw std::runtime_error ("Failed to clone module");
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error (std::string{"Failed to initialize fork thread in module "} + this->get_module_id() + ":" + e.what());
                 } catch (...) {
-                    throw std::runtime_error ("Failed to clone module");
+                    throw std::runtime_error (std::string{"Failed to initialize fork thread in module "} + this->get_module_id());
                 }
             }
             m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, head});
         } else if (this->m_sinks["template"].size() == 0) {
-            throw std::runtime_error ("Parallel pipeline template cannot be empty");
+            throw std::runtime_error (std::string{"Pipeline template channel is empty in module "} + this->get_module_id());
         } else {
-            throw std::runtime_error ("Invalid parallel pipeline template");
+            throw std::runtime_error (std::string{"Pipeline template channel is invalid in module "} + this->get_module_id());
         }
     }
 
