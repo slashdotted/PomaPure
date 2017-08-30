@@ -56,8 +56,9 @@ PomaJob::PomaJob(const boost::filesystem::path& loader,
     m_stderr_file = (output_path / (job_id + ".err")).string();
 
     std::ofstream jsonfile;
-    jsonfile.open(job_id);
+    jsonfile.open(m_json_file);
     jsonfile  << json_data;
+    jsonfile.flush();
     jsonfile.close();
 
     std::cerr << "New job =>" << std::endl
