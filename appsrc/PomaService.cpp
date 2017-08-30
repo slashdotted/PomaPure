@@ -59,14 +59,6 @@ PomaJob::PomaJob(const boost::filesystem::path& loader,
     jsonfile  << json_data;
     jsonfile.flush();
     jsonfile.close();
-
-    std::cerr << "New job =>" << std::endl
-              << "\tid=" << job_id << std::endl
-              << "\tjson=" << m_json_file << std::endl
-              << "\tstdout=" << m_stdout_file << std::endl
-              << "\tstderr=" << m_stderr_file << std::endl
-              << "\tloader=" << m_loader_path << std::endl
-              << "\tmodules=" << m_modules_path << std::endl;
 }
 
 PomaJob::~PomaJob()
@@ -111,6 +103,7 @@ bool PomaJob::clear() const
     if (m_job == nullptr) {
         boost::filesystem::remove(m_stdout_file);
         boost::filesystem::remove(m_stderr_file);
+        boost::filesystem::remove(m_json_file);
         return true;
     } else {
         return false;
