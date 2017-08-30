@@ -272,7 +272,6 @@ int main(int argc, char* argv[])
                     std::cout << host << "\t" << port << "\t" << jobid << "\tUNKNOWN" << std::endl;
                 }
             }
-            std::cout << std::endl;
             std::cout << "Clearing pipeline jobs" << std::endl;
             for (const auto& host : hcg.hosts()) {
                 if(clear_job(host, port, jobid)) {
