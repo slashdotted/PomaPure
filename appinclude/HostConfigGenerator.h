@@ -32,6 +32,7 @@
 #define HOSTCONFIGGENERATOR_H
 
 #include <unordered_map>
+#include <boost/algorithm/string.hpp>
 #include <string>
 #include <istream>
 #include <vector>
@@ -53,7 +54,7 @@ private:
         static std::string source(const std::string& host)
         {
             std::stringstream ss;
-            ss << "__parallel_source_" << host;
+            ss << "__parallel_source_" << boost::replace_all_copy(host, ".", "_");
             return ss.str();
         }
         static std::string unique(const std::string& prefix)

@@ -40,7 +40,6 @@
 #include <fstream>
 #include <string>
 #include "zhelpers.hpp"
-#include "base64.h"
 #include <algorithm>
 
 std::string get_address(const std::string& host, unsigned int port=5232);
@@ -68,7 +67,7 @@ std::string get_reply(const std::string& address, const boost::property_tree::pt
         boost::property_tree::write_json(ss, request);
         zmq::context_t context {1};
         zmq::socket_t socket{context, ZMQ_REQ};
-        int timeout = 500;
+        int timeout = 1000;
         socket.setsockopt(ZMQ_SNDTIMEO, &timeout, sizeof(int));
         socket.setsockopt(ZMQ_RCVTIMEO, &timeout, sizeof(int));
         socket.setsockopt(ZMQ_LINGER, &timeout, sizeof(int));
@@ -97,12 +96,10 @@ bool create_job(const std::string& host, unsigned int port, const std::string& j
         boost::property_tree::ptree req;
         req.put("command", "create");
         req.put("jobid", jobid);
-        unsigned char *data = new unsigned char[json.size() + 1];
-        strcpy((char *) data, json.c_str());
-        std::string json64 = base64_encode(data, json.size() + 1);
-        req.put("json", json64);
+        req.put("json", json);
         return request(address, req);
     } catch (...) {
+        std::cerr << "Exception in create job " << std::endl;
         return false;
     }
 }
@@ -266,6 +263,7 @@ int main(int argc, char* argv[])
                     std::cout << host << "\t" << port << "\t" << jobid << "\tUNKNOWN" << std::endl;
                 }
             }
+            std::cout << std::endl;
             for (const auto& host : hcg.hosts()) {
                 if(clear_job(host, port, jobid)) {
                     std::cout << host << "\t" << port << "\t" << jobid << "\tCLEARED" << std::endl;
