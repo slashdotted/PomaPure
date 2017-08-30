@@ -48,7 +48,6 @@ PomaJob::PomaJob(const boost::filesystem::path& loader,
                  const boost::filesystem::path& output_path,
                  const std::string& job_id,
                  const std::string& json_data)
-
     : m_loader_path{loader.string()}, m_modules_path{modules.string()}, m_job_id{job_id}
 {
     m_json_file = (output_path / (job_id + ".json")).string();
@@ -121,7 +120,7 @@ bool PomaJob::clear() const
 bool PomaJob::start()
 {
     auto env = boost::this_process::environment();
-    m_job = new boost::process::child(m_loader_path, "--json", m_json_file, env,
+    m_job = new boost::process::child(m_loader_path, "--json", m_json_file, "--plugindir", m_modules_path, env,
                                       boost::process::std_out > m_stdout_file, boost::process::std_err > m_stderr_file);
     return is_running();
 }
@@ -255,6 +254,7 @@ int main(int argc, char* argv[])
     desc.add_options()
     ("loaderpath", boost::program_options::value<std::string>()->required(), "PomaLoader path")
     ("plugindir", boost::program_options::value<std::string>()->required(), "Plugin directory")
+    ("check", boost::program_options::value<std::string>(), "JSON file for testing parameters")
     ("port", boost::program_options::value<unsigned int>()->default_value(5232), "Service TCP port")
     ("outputdir", boost::program_options::value<std::string>()->required(), "Output directory (json, log and error files)");
     boost::program_options::variables_map vm;
@@ -281,8 +281,25 @@ int main(int argc, char* argv[])
         loader = boost::filesystem::canonical(loader);
         modules = boost::filesystem::canonical(modules);
         outpath = boost::filesystem::canonical(outpath);
-        poma::PomaService ps{loader, modules, outpath, vm["port"].as<unsigned int>()};
-        ps.start_serving();
+        if (vm.count("check")) {
+			std::string testfile{vm["check"].as<std::string>()};
+			std::stringstream ss;
+			std::ifstream jsonfile;
+			jsonfile.open(testfile);
+			std::string jsondata((std::istreambuf_iterator<char>(jsonfile)),
+                 std::istreambuf_iterator<char>());
+            jsonfile.close();
+			std::cerr << "Testing with file " << testfile << ":" << jsondata << std::endl;
+			poma::PomaJob job{loader, modules, outpath, "testid", jsondata};
+			job.start();
+			std::cout << "Press Enter to terminate...";
+			std::cin.get();
+			job.kill();
+			job.clear();
+		} else {
+			poma::PomaService ps{loader, modules, outpath, vm["port"].as<unsigned int>()};
+			ps.start_serving();
+		}
     } catch (const std::exception& e) {
         std::cerr << "Failed to start service: " << e.what() << std::endl;
         exit(-1);
