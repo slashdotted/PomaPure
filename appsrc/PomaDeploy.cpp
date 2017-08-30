@@ -43,29 +43,57 @@
 #include "base64.h"
 #include <algorithm>
 
-std::string get_reply(const std::string& address, const boost::property_tree::ptree& request)
+std::string get_address(const std::string& host, unsigned int port=5232);
+std::string get_reply(const std::string& address, const boost::property_tree::ptree& request);
+bool request(const std::string& address, const boost::property_tree::ptree& request, const std::string& successvalue = "/ success /");
+bool create_job(const std::string& host, unsigned int port, const std::string& jobid, const std::string& json);
+bool check_modules(const std::string& host, unsigned int port, std::set<std::string> modules);
+bool is_running(const std::string& host, unsigned int port, const std::string& jobid);
+bool start_job(const std::string& host, unsigned int port, const std::string& jobid);
+bool kill_job(const std::string& host, unsigned int port, const std::string& jobid);
+bool clear_job(const std::string& host, unsigned int port, const std::string& jobid);
+std::vector<std::string> list_jobs(const std::string& host, unsigned int port);
+
+std::string get_address(const std::string& host, unsigned int port)
 {
     std::stringstream ss;
-    boost::property_tree::write_json(ss, request);
-    zmq::context_t context {1};
-    zmq::socket_t socket{context, ZMQ_REQ};
-    socket.connect(address.c_str());
-    s_send(socket, ss.str());
-    std::stringstream iss{s_recv(socket)};
-    boost::property_tree::ptree rep;
-    boost::property_tree::json_parser::read_json(iss, rep);
-    std::string reply{rep.get("reply","")};
-    return reply;
+    ss << "tcp://" << host << ":" << port;
+    return ss.str();
 }
 
-bool request(const std::string& address, const boost::property_tree::ptree& request, const std::string& successvalue = "/ success /")
+std::string get_reply(const std::string& address, const boost::property_tree::ptree& request)
+{
+    try {
+        std::stringstream ss;
+        boost::property_tree::write_json(ss, request);
+        zmq::context_t context {1};
+        zmq::socket_t socket{context, ZMQ_REQ};
+        int timeout = 500;
+        socket.setsockopt(ZMQ_SNDTIMEO, &timeout, sizeof(int));
+        socket.setsockopt(ZMQ_RCVTIMEO, &timeout, sizeof(int));
+        socket.setsockopt(ZMQ_LINGER, &timeout, sizeof(int));
+        socket.connect(address.c_str());
+        s_send(socket, ss.str());
+        std::stringstream iss{s_recv(socket)};
+        boost::property_tree::ptree rep;
+        boost::property_tree::json_parser::read_json(iss, rep);
+        std::string reply{rep.get("reply","")};
+        return reply;
+    } catch(...) {
+        std::cerr << "Failed to communicate with " << address << std::endl;
+        return "";
+    }
+}
+
+bool request(const std::string& address, const boost::property_tree::ptree& request, const std::string& successvalue)
 {
     return get_reply(address, request) == successvalue;
 }
 
-bool create_job(const std::string& address, const std::string& jobid, const std::string& json)
+bool create_job(const std::string& host, unsigned int port, const std::string& jobid, const std::string& json)
 {
     try {
+        auto address = get_address(host, port);
         boost::property_tree::ptree req;
         req.put("command", "create");
         req.put("jobid", jobid);
@@ -79,9 +107,10 @@ bool create_job(const std::string& address, const std::string& jobid, const std:
     }
 }
 
-bool check_modules(const std::string& address, std::set<std::string> modules)
+bool check_modules(const std::string& host, unsigned int port, std::set<std::string> modules)
 {
     try {
+        auto address = get_address(host, port);
         boost::property_tree::ptree request;
         request.put("command", "modules");
         std::vector<std::string> remote_modules;
@@ -89,8 +118,7 @@ bool check_modules(const std::string& address, std::set<std::string> modules)
         boost::split(remote_modules, reply, boost::is_any_of(","));
         for (const auto& rmod : modules) {
             if(std::find(remote_modules.begin(), remote_modules.end(), rmod) == remote_modules.end()) {
-                std::cerr << "Module " << rmod << " is not available on " << address << std::endl;
-                std::cerr << "Available modules are :" << reply << std::endl;
+                std::cerr << "Module " << rmod << " is not available on " << host << std::endl;
                 return false;
             }
         }
@@ -100,161 +128,241 @@ bool check_modules(const std::string& address, std::set<std::string> modules)
     }
 }
 
-bool is_running(const std::string& address, const std::string& jobid)
+bool is_running(const std::string& host, unsigned int port, const std::string& jobid)
 {
+    auto address = get_address(host, port);
     boost::property_tree::ptree req;
     req.put("command", "isrunning");
     req.put("jobid", jobid);
     return request(address, req);
 }
 
-bool start_job(const std::string& address, const std::string& jobid)
+bool start_job(const std::string& host, unsigned int port, const std::string& jobid)
 {
+    auto address = get_address(host, port);
     boost::property_tree::ptree req;
     req.put("command", "start");
     req.put("jobid", jobid);
     return request(address, req);
 }
 
-bool kill_job(const std::string& address, const std::string& jobid)
+bool kill_job(const std::string& host, unsigned int port, const std::string& jobid)
 {
+    auto address = get_address(host, port);
     boost::property_tree::ptree req;
     req.put("command", "kill");
     req.put("jobid", jobid);
     return request(address, req);
 }
 
-bool clear_job(const std::string& address, const std::string& jobid)
+bool clear_job(const std::string& host, unsigned int port, const std::string& jobid)
 {
+    auto address = get_address(host, port);
     boost::property_tree::ptree req;
     req.put("command", "clear");
     req.put("jobid", jobid);
     return request(address, req);
 }
 
-std::vector<std::string> list_jobs(const std::string& address)
+std::vector<std::string> list_jobs(const std::string& host, unsigned int port)
 {
+    auto address = get_address(host, port);
     boost::property_tree::ptree request;
     request.put("command", "list");
     std::vector<std::string> remote_jobs;
     std::string reply{get_reply(address, request)};
-    boost::split(remote_jobs, reply, boost::is_any_of(","));
+    if (reply != "") {
+        boost::split(remote_jobs, reply, boost::is_any_of(","));
+    }
     return remote_jobs;
 }
 
 int main(int argc, char* argv[])
 {
-    /* Parse command line */
     boost::program_options::options_description desc("Poma Deploy Options");
     desc.add_options()
-    ("command", boost::program_options::value<std::string>()->required(), "command to execute")
-    ("address", boost::program_options::value<std::string>()->default_value("tcp://localhost:5232"), "remote address")
+    ("cmd", boost::program_options::value<std::string>()->required(), "command to execute")
+    ("host", boost::program_options::value<std::string>()->default_value("localhost"), "remote host")
     ("json", boost::program_options::value<std::string>(), "pipeline description file (json)")
     ("jobid", boost::program_options::value<std::string>(), "job unique identifier")
     ("port", boost::program_options::value<unsigned int>()->default_value(5232), "Service TCP port")
     ("baseport", boost::program_options::value<unsigned int>()->default_value(6000), "Base ZeroMQ sink port");
+
     boost::program_options::variables_map vm;
     boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).allow_unregistered().run(), vm);
+
     try {
         boost::program_options::notify(vm);
     } catch (std::exception &e) {
         std::cerr << desc << std::endl << e.what() << std::endl;
         exit(-1);
     }
-    boost::uuids::random_generator uuid_generator;
+
+    // Extract command line parameters
+    std::string command{vm["cmd"].as<std::string>()};
+    std::string host{vm["host"].as<std::string>()};
+    unsigned int port = vm["port"].as<unsigned int>();
+    unsigned int baseport = vm["baseport"].as<unsigned int>();
     std::string jobid;
-    if (vm.count("jobid") == 0) {
-        boost::uuids::uuid juuid = uuid_generator();
-        jobid = boost::uuids::to_string(juuid);
-    } else {
+    if (vm.count("jobid")) {
         jobid = vm["jobid"].as<std::string>();
     }
 
-    std::string command{vm["command"].as<std::string>()};
-    std::string address{vm["address"].as<std::string>()};
-    unsigned int port = vm["port"].as<unsigned int>();
-    unsigned int baseport = vm["baseport"].as<unsigned int>();
-
-    if (command == "deploy") {
-        std::cout << "Deploying job " << jobid << std::endl;
+    if (command == "deploy" || command == "run") {
+        if (vm.count("json") == 0) {
+            std::cerr << "deploy command requires json parameter" << std::endl;
+            exit(-1);
+        }
+        if (vm.count("jobid") == 0) {
+            boost::uuids::random_generator uuid_generator;
+            boost::uuids::uuid juuid = uuid_generator();
+            jobid = boost::uuids::to_string(juuid);
+        }
+        // Process pipeline
         std::ifstream ifs;
         ifs.open(vm["json"].as<std::string>());
         poma::HostConfigGenerator hcg{ifs, baseport};
+        // Check remote modules
         for (const auto& host : hcg.hosts()) {
-            std::cout << "Checking compatibility for " << host << std::endl;
-            std::stringstream ss;
-            ss << "tcp://" << host << ":" << port;
-            if (check_modules(ss.str(), hcg.modules(host))) {
-                std::cout << "Host " << host << " provides the required modules" << std::endl;
-            } else {
-                std::cerr << "Host " << host << " does not provide the required modules" << std::endl;
+            if (!check_modules(host, port, hcg.modules(host))) {
                 exit(-1);
             }
         }
         std::vector<std::string> deployed_hosts;
-        bool deploy_succeeded{true};
+
         for (const auto& host : hcg.hosts()) {
-            std::cout << "Deploying on host " << host << " :" << hcg[host] << std::endl;
-            std::stringstream ss;
-            ss << "tcp://" << host << ":" << port;
-            if (create_job(ss.str(), jobid, hcg[host])) {
-                std::cout << "Deployment on host " << host << " succeeded!" << std::endl;
-                deployed_hosts.push_back(ss.str());
+            if (create_job(host, port, jobid, hcg[host])) {
+                deployed_hosts.push_back(host);
             } else {
-                std::cerr << "Deployment on host " << host << " failed!" << std::endl;
-                deploy_succeeded = false;
                 break;
             }
         }
         // Start job
-        if (deploy_succeeded) {
-            for (const auto& host : deployed_hosts) {
-                if(start_job(host, jobid)) {
-                    std::cout << "Successfully started job on " << host << std::endl;
+        if (deployed_hosts.size() == hcg.hosts().size()) {
+            for (const auto& host : hcg.hosts()) {
+                if(start_job(host, port, jobid)) {
+                    std::cout << host << "\t" << port << "\t" << jobid << "\tRUNNING" << std::endl;
                 } else {
-                    std::cerr << "Failed to start job on " << host << std::endl;
+                    std::cout << host << "\t" << port << "\t" << jobid << "\tFAILED" << std::endl;
+                }
+            }
+        } else {
+            for (const auto& host : hcg.hosts()) {
+                if (std::find(deployed_hosts.begin(), deployed_hosts.end(), host) != deployed_hosts.end()) {
+                    std::cout << host << "\t" << port << "\t" << jobid << "\tSTALE" << std::endl;
+                } else {
+                    std::cout << host << "\t" << port << "\t" << jobid << "\tFAILED" << std::endl;
                 }
             }
         }
-        std::cout << "Press Enter to end execution...";
-        std::cin.get();
-        // Clear job
-        for (const auto& host : deployed_hosts) {
-            if(kill_job(host, jobid)) {
-                std::cout << "Successfully killed job on " << host << std::endl;
-            } else {
-                std::cerr << "Failed to kill job on " << host << std::endl;
+
+        if (command == "run") {
+            std::cout << "Press enter to stop execution...";
+            std::cin.get();
+            for (const auto& host : hcg.hosts()) {
+                if(kill_job(host, port, jobid)) {
+                    std::cout << host << "\t" << port << "\t" << jobid << "\tSTOPPED" << std::endl;
+                } else {
+                    std::cout << host << "\t" << port << "\t" << jobid << "\tUNKNOWN" << std::endl;
+                }
+            }
+            for (const auto& host : hcg.hosts()) {
+                if(clear_job(host, port, jobid)) {
+                    std::cout << host << "\t" << port << "\t" << jobid << "\tCLEARED" << std::endl;
+                } else {
+                    std::cout << host << "\t" << port << "\t" << jobid << "\tUNKNOWN" << std::endl;
+                }
             }
         }
-        for (const auto& host : deployed_hosts) {
-            if(clear_job(host, jobid)) {
-                std::cout << "Successfully cleared job on " << host << std::endl;
+    } else if (command == "killall") {
+        if (vm.count("json") == 0) {
+            std::cerr << "killall command requires json parameter" << std::endl;
+            exit(-1);
+        }
+        if (vm.count("jobid") == 0) {
+            std::cerr << "killall command requires jobid parameter" << std::endl;
+            exit(-1);
+        }
+        // Process pipeline
+        std::ifstream ifs;
+        ifs.open(vm["json"].as<std::string>());
+        poma::HostConfigGenerator hcg{ifs, baseport};
+        for (const auto& host : hcg.hosts()) {
+            if(kill_job(host, port, jobid)) {
+                std::cout << host << "\t" << port << "\t" << jobid << "\tSTOPPED" << std::endl;
             } else {
-                std::cerr << "Failed to clear job on " << host << std::endl;
+                std::cout << host << "\t" << port << "\t" << jobid << "\tUNKNOWN" << std::endl;
+            }
+        }
+    } else if (command == "clear") {
+        if (vm.count("json") == 0) {
+            std::cerr << "clear command requires json parameter" << std::endl;
+            exit(-1);
+        }
+        if (vm.count("jobid") == 0) {
+            std::cerr << "clear command requires jobid parameter" << std::endl;
+            exit(-1);
+        }
+        // Process pipeline
+        std::ifstream ifs;
+        ifs.open(vm["json"].as<std::string>());
+        poma::HostConfigGenerator hcg{ifs, baseport};
+        for (const auto& host : hcg.hosts()) {
+            if(clear_job(host, port, jobid)) {
+                std::cout << host << "\t" << port << "\t" << jobid << "\tCLEARED" << std::endl;
+            } else {
+                std::cout << host << "\t" << port << "\t" << jobid << "\tUNKNOWN" << std::endl;
             }
         }
     } else if (command == "list") {
-        std::cout << "Jobs on " << address << ":" << std::endl;
-        for (const auto& jid : list_jobs(address)) {
-            std::cout << jid << std::endl;
+        for (const auto& jid : list_jobs(host, port)) {
+            if (is_running(host,port,jid)) {
+                std::cout << host << "\t" << port << "\t" << jid << "\tRUNNING" << std::endl;
+            } else {
+                std::cout << host << "\t" << port << "\t" << jid << "\tSTALE" << std::endl;
+            }
         }
     } else if (command == "kill") {
-        if(kill_job(address, jobid)) {
-            std::cout << "Successfully killed job on " << address << std::endl;
+        if (vm.count("jobid") == 0) {
+            std::cerr << "kill command requires jobid parameter" << std::endl;
+            exit(-1);
+        }
+        if(kill_job(host, port, jobid)) {
+            if (is_running(host,port,jobid)) {
+                std::cout << host << "\t" << port << "\t" << jobid << "\tRUNNING" << std::endl;
+            } else {
+                std::cout << host << "\t" << port << "\t" << jobid << "\tSTALE" << std::endl;
+            }
         } else {
-            std::cerr << "Failed to kill job on " << address << std::endl;
+            std::cout << host << "\t" << port << "\t" << jobid << "\tUNKNOWN" << std::endl;
         }
     } else if (command == "clear") {
-        if(clear_job(address, jobid)) {
-            std::cout << "Successfully cleared job on " << address << std::endl;
+        if (vm.count("jobid") == 0) {
+            std::cerr << "clear command requires jobid parameter" << std::endl;
+            exit(-1);
+        }
+        if(clear_job(host, port, jobid)) {
+            std::cout << host << "\t" << port << "\t" << jobid << "\tCLEARED" << std::endl;
         } else {
-            std::cerr << "Failed to clear job on " << address << std::endl;
+            std::cout << host << "\t" << port << "\t" << jobid << "\tUNKNOWN" << std::endl;
         }
     } else if (command == "isrunning") {
-        if(is_running(address, jobid)) {
-            std::cout << "Job " << jobid << " is running on " << address << std::endl;
+        if (vm.count("jobid") == 0) {
+            std::cerr << "isrunning command requires jobid parameter" << std::endl;
+            exit(-1);
+        }
+        if(is_running(host, port, jobid)) {
+            std::cout << host << "\t" << port << "\t" << jobid << "\tRUNNING" << std::endl;
         } else {
-            std::cout << "Job " << jobid << " is not running on " << address << std::endl;
+            std::cout << host << "\t" << port << "\t" << jobid << "\tSTALE" << std::endl;
+        }
+    } else if (command == "modules") {
+        boost::property_tree::ptree request;
+        request.put("command", "modules");
+        std::vector<std::string> remote_modules;
+        std::string reply{get_reply(get_address(host, port), request)};
+        if (reply != "") {
+            std::cout << reply << std::endl;
         }
     } else {
         std::cerr << "Invalid command " << command << std::endl;

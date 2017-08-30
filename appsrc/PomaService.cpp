@@ -29,6 +29,7 @@
 */
 
 #include "PomaService.h"
+#include "PomaDefault.h"
 #include <fstream>
 #include <iostream>
 #include <boost/program_options.hpp>
@@ -36,6 +37,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/exception_ptr.hpp>
+#include <boost/dll/import.hpp>
 #include "zhelpers.hpp"
 #include "base64.h"
 
@@ -215,7 +217,12 @@ std::string PomaService::process_request(const std::string& req)
                 }
                 boost::filesystem::path file_ext = it->path().extension();
                 if (file_ext == ".so") {
-                    ss << it->path().stem().string().substr(3) << ",";
+                    auto plugin_module = boost::dll::import<ModuleFactory<PomaModuleType>>(
+                                             it->path().c_str(),
+                                             "factory",
+                                             boost::dll::load_mode::append_decorations
+                                         );
+                    ss << plugin_module->name() << ",";
                 }
                 ++it;
             }
