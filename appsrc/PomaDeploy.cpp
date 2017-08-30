@@ -220,22 +220,29 @@ int main(int argc, char* argv[])
         ifs.open(vm["json"].as<std::string>());
         poma::HostConfigGenerator hcg{ifs, baseport};
         // Check remote modules
+        std::cout << "Verifying modules" << std::endl;
         for (const auto& host : hcg.hosts()) {
+			std::cout << "\t" << host << ":" << port << "..."; 
             if (!check_modules(host, port, hcg.modules(host))) {
                 exit(-1);
             }
+            std::cout << "OK" << std::endl;
         }
         std::vector<std::string> deployed_hosts;
-
+		std::cout << "Deploying pipeline jobs" << std::endl;
         for (const auto& host : hcg.hosts()) {
+			std::cout << "\t" << host << ":" << port << "..."; 
             if (create_job(host, port, jobid, hcg[host])) {
                 deployed_hosts.push_back(host);
+                std::cout << "OK" << std::endl;
             } else {
+				std::cout << "FAILED" << std::endl;
                 break;
             }
         }
         // Start job
         if (deployed_hosts.size() == hcg.hosts().size()) {
+			std::cout << "Starting pipeline jobs" << std::endl;
             for (const auto& host : hcg.hosts()) {
                 if(start_job(host, port, jobid)) {
                     std::cout << host << "\t" << port << "\t" << jobid << "\tRUNNING" << std::endl;
@@ -244,6 +251,7 @@ int main(int argc, char* argv[])
                 }
             }
         } else {
+			std::cout << "Pipeline job status" << std::endl;
             for (const auto& host : hcg.hosts()) {
                 if (std::find(deployed_hosts.begin(), deployed_hosts.end(), host) != deployed_hosts.end()) {
                     std::cout << host << "\t" << port << "\t" << jobid << "\tSTALE" << std::endl;
@@ -254,8 +262,9 @@ int main(int argc, char* argv[])
         }
 
         if (command == "run") {
-            std::cout << "Press enter to stop execution...";
+            std::cout << "[Press enter to stop execution...]";
             std::cin.get();
+            std::cout << "Killing pipeline jobs" << std::endl;
             for (const auto& host : hcg.hosts()) {
                 if(kill_job(host, port, jobid)) {
                     std::cout << host << "\t" << port << "\t" << jobid << "\tSTOPPED" << std::endl;
@@ -264,6 +273,7 @@ int main(int argc, char* argv[])
                 }
             }
             std::cout << std::endl;
+            std::cout << "Clearing pipeline jobs" << std::endl;
             for (const auto& host : hcg.hosts()) {
                 if(clear_job(host, port, jobid)) {
                     std::cout << host << "\t" << port << "\t" << jobid << "\tCLEARED" << std::endl;

@@ -144,7 +144,6 @@ void PomaService::start_serving()
     socket.bind(address.str().c_str());
     for (;;) {
         s_send(socket, process_request(s_recv(socket)));
-        std::cout << "Response sent.." << std::endl;
     }
 }
 

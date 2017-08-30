@@ -118,7 +118,7 @@ HostConfigGenerator::HostConfigGenerator(std::istream& pipeline, unsigned int ba
             source.mid = Module::unique("__net_source");
             source.mtype = "ZeroMQSource";
             source.mhost = thost;
-            sink.mparams["sourceaddress"] = Module::address("*", base_port);
+            source.mparams["sourceaddress"] = Module::address("*", base_port);
             ++base_port;
             m_host_modules_map.insert(std::make_pair(sink.mhost,sink));
             m_host_modules_map.insert(std::make_pair(source.mhost,source));
