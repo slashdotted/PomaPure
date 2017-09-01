@@ -38,3 +38,7 @@ From the root directory, run `mkdir build && cd build && cmake ..`; if everythin
 
 Move to the Modules directory and run `
 for i in */; do cd $i && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make && cd ../..; done`
+
+### Graphical dataflow editor (Experimental)
+
+An experimental version of a graphical dataflow editor is available at https://github.com/slashdotted/PomaPipelineEditorExperimental
