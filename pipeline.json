@@ -1,0 +1,57 @@
+{
+"source" : "capture",
+"modules" : {
+		"capture" : {
+			"type": "Capture"
+		},
+		"skipper" : {
+			"type": "Skipper",
+			"skipinterval": 5
+		},
+		"resize" : {
+			"type": "Resize"
+		},
+		"color" : {
+			"type": "Color"
+		},			
+		"filter1" : {
+			"type": "MetadataFilter",
+			"field": "color.red",
+			"op": ">",
+			"value": 120
+		},
+		"filter2" : {
+			"type": "MetadataFilter",
+			"field": "color.blue",
+			"op": ">",
+			"value": 120
+		},
+		"filter3" : {
+			"type": "MetadataFilter",
+			"field": "color.green",
+			"op": ">",
+			"value": 120
+		},
+		"ocr" : {
+			"type": "OCR"
+		},
+		"buffer" : {
+			"type": "Buffer"
+		},		
+		"viewer" : {
+			"type": "Viewer"
+		}
+},
+"links" :
+    [
+    { "from" : "capture", "to" : "skipper" },
+    { "from" : "skipper", "to" : "resize" },
+    { "from" : "resize", "to" : "color" },
+    { "from" : "color", "to" : "filter1" },
+    { "from" : "filter1", "to" : "filter2" },
+    { "from" : "filter2", "to" : "filter3" },
+    { "from" : "filter3", "to" : "buffer" },
+    { "from" : "buffer", "to" : "ocr" },
+    { "from" : "ocr", "to" : "viewer" }
+    ]
+}

@@ -93,7 +93,6 @@ void MetadataProcessor::parse()
     iss << m_code;
     std::string i;
     std::string data;
-    char ch;
     std::vector<std::string> def_labels;
     std::vector<std::string> jmp_labels;
     while(iss) {
@@ -209,7 +208,7 @@ bool MetadataProcessor::process(boost::property_tree::ptree& pt)
                 break;
             }
             case OpCode::LOAD: {
-                m_stack.push_back(pt.get<Z>(is.m_data, [] { Z t; return t; }()));
+                m_stack.push_back(pt.get<Z>(is.m_data, [] { Z t[1] = {}; return t[0]; }()));
                 break;
             }
             case OpCode::PUSH: {
@@ -225,7 +224,7 @@ bool MetadataProcessor::process(boost::property_tree::ptree& pt)
             }
             case OpCode::ADD: {
                 Z tmp = 0;
-                for (unsigned int i{0}; i<is.m_value; ++i) {
+                for (int i{0}; i<is.m_value; ++i) {
                     Z val{boost::get<Z>(m_stack.back())};
                     tmp += val;
                     m_stack.pop_back();
@@ -235,7 +234,7 @@ bool MetadataProcessor::process(boost::property_tree::ptree& pt)
             }
             case OpCode::MUL: {
                 Z tmp = 1;
-                for (unsigned int i{0}; i<is.m_value; ++i) {
+                for (int i{0}; i<is.m_value; ++i) {
                     Z val{boost::get<Z>(m_stack.back())};
                     tmp *= val;
                     m_stack.pop_back();
@@ -246,7 +245,7 @@ bool MetadataProcessor::process(boost::property_tree::ptree& pt)
             case OpCode::DIV: {
                 Z tmp{boost::get<Z>(m_stack.back())};
                 m_stack.pop_back();
-                for (unsigned int i{0}; i<is.m_value; ++i) {
+                for (int i{0}; i<is.m_value; ++i) {
                     Z val{boost::get<Z>(m_stack.back())};
                     tmp /= val;
                     m_stack.pop_back();
@@ -257,7 +256,7 @@ bool MetadataProcessor::process(boost::property_tree::ptree& pt)
             case OpCode::SUB: {
                 Z tmp{boost::get<Z>(m_stack.back())};
                 m_stack.pop_back();
-                for (unsigned int i{0}; i<is.m_value; ++i) {
+                for (int i{0}; i<is.m_value; ++i) {
                     Z val{boost::get<Z>(m_stack.back())};
                     tmp -= val;
                     m_stack.pop_back();
@@ -421,7 +420,7 @@ bool MetadataProcessor::process<std::string>(boost::property_tree::ptree& pt)
             }
             case OpCode::ADD: {
                 std::string tmp;
-                for (unsigned int i{0}; i<is.m_value; ++i) {
+                for (int i{0}; i<is.m_value; ++i) {
                     std::string val{boost::get<std::string>(m_stack.back())};
                     tmp += val;
                     m_stack.pop_back();
@@ -525,7 +524,7 @@ bool MetadataProcessor::process<bool>(boost::property_tree::ptree& pt)
                 break;
             }
             case OpCode::LOAD: {
-                m_stack.push_back(pt.get<bool>(is.m_data, [] { bool t; return t; }()));
+                m_stack.push_back(pt.get<bool>(is.m_data, [] { bool t{false}; return t; }()));
                 break;
             }
             case OpCode::PUSH: {

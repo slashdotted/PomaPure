@@ -60,6 +60,8 @@
 #include <boost/foreach.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/exception/diagnostic_information.hpp>
+#include <boost/exception_ptr.hpp>
 #include <boost/dll/alias.hpp>
 #include <boost/function.hpp>
 #include <boost/config.hpp>
@@ -89,7 +91,11 @@ struct Serializable {
 template<typename T>
 void deserialize(Packet<T>& dta, const std::string& data_string)
 {
-    uint32_t ptree_payload_size{(uint32_t) ((data_string.at(0) << 24) + (data_string.at(1) << 16) + (data_string.at(2) << 8) + data_string.at(3))};
+    unsigned char b0 = (unsigned char) data_string.at(0);
+    unsigned char b1 = (unsigned char) data_string.at(1);
+    unsigned char b2 = (unsigned char) data_string.at(2);
+    unsigned char b3 = (unsigned char) data_string.at(3);
+    uint32_t ptree_payload_size{(uint32_t) ((b0 << 24)+(b1 << 16)+(b2 << 8)+ b3)};
     std::string json_string{data_string.substr (4, ptree_payload_size)};
     std::stringstream iss{json_string};
     boost::property_tree::json_parser::read_json(iss, dta.m_properties);
@@ -151,6 +157,7 @@ bool set_field_value_from_string(M* field, std::string value)
 }
 
 template<>
+<<<<<<< HEAD
 bool set_field_value_from_string(bool* field, std::string value)
 {
     if (value == "true") {
@@ -164,6 +171,8 @@ bool set_field_value_from_string(bool* field, std::string value)
 }
 
 template<>
+=======
+>>>>>>> 07090696c41f0462c66e6627cf2224d5afac1ba9
 bool set_field_value_from_string(std::string* field, std::string value)
 {
     *field = value;
@@ -281,8 +290,12 @@ public:
         for (auto i : sm_instances) {
             try {
                 i->initialize();
+            } catch (const boost::exception& e) {
+                throw std::runtime_error(boost::diagnostic_information(e));
+            } catch (std::exception e) {
+                throw std::runtime_error (std::string{"Failed to initialize module "} + typeid(*i).name() + ":" + e.what());
             } catch (...) {
-                std::cerr << "Failed to initialize module " << typeid(*i).name() << std::endl;
+                throw std::runtime_error (std::string{"Failed to initialize module: "} + typeid(*i).name());
             }
         }
     }
@@ -315,9 +328,10 @@ public:
         try {
             boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).allow_unregistered().run(), vm);
             boost::program_options::notify(vm);
+        } catch (const boost::exception& e) {
+            throw std::runtime_error(boost::diagnostic_information(e));
         } catch (std::exception &e) {
-            std::cerr << desc << std::endl << e.what() << std::endl;
-            exit(-1);
+            throw std::runtime_error(std::string{"Failed to setup command line arguments: "} + e.what());
         }
         for (auto i : sm_instances) {
             i->process_cli(vm);
@@ -339,12 +353,12 @@ public:
                                   << " on " << channel << std::endl;
                         try {
                             s.m_module->on_incoming_data(dta, channel);
-                        } catch(std::exception const& e) {
-                            std::cerr << "DEBUG: Exception " << e.what() << " while processing data in module " << s.m_module->m_module_id << std::endl;
-                            exit(1);
+                        } catch (const boost::exception& e) {
+                            throw std::runtime_error(boost::diagnostic_information(e));
+                        } catch(const std::exception& e) {
+                            throw std::runtime_error(std::string{"DEBUG: Exception "} + e.what() + " while processing data in module " + s.m_module->m_module_id);
                         } catch(...) {
-                            std::cerr << "DEBUG: Exception ??? while processing data in module " << s.m_module->m_module_id << std::endl;
-                            exit(1);
+                            throw std::runtime_error(std::string{"DEBUG: Exception ??? while processing data in module "} + s.m_module->m_module_id);
                         }
                         auto after = std::chrono::high_resolution_clock::now();
                         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(after - before).count();
@@ -355,8 +369,12 @@ public:
                     } else {
                         s.m_module->on_incoming_data(dta, channel);
                     }
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while processing data on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 } catch(...) {
-                    std::cerr << "Exception while processing data on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw std::runtime_error(std::string{"Unknown exception while processing data on channel "} + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 }
             }
         }
@@ -367,7 +385,6 @@ public:
     std::string read_property(const std::string& name, const std::string& channel = "default") const
     {
         std::stringstream ss;
-        bool first{true};
         auto it{m_sinks.find(channel)};
         if (it != m_sinks.end()) {
             bool first{true};
@@ -379,8 +396,12 @@ public:
                         first = false;
                         ss << val;
                     }
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while reading property " + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 } catch(...) {
-                    std::cerr << "Exception while reading property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw std::runtime_error(std::string{"Unknown exception while reading property "} + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 }
             }
 
@@ -402,8 +423,12 @@ public:
                         first = false;
                         ss << val;
                     }
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while writing value " + value + " to property " + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 } catch(...) {
-                    std::cerr << "Exception while writing property on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw std::runtime_error(std::string{"Unknown exception while writing value "} + value + " to property " + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 }
             }
         }
@@ -424,8 +449,12 @@ public:
                         ss << data;
                         first = false;
                     }
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while enumerating properties on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 } catch(...) {
-                    std::cerr << "Exception while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw std::runtime_error(std::string{"Unknown exception while enumerating properties on channel "} + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
                 }
             }
         }
@@ -465,12 +494,13 @@ public:
     /* Pipeline duplication methods */
 
     /* Create a clone of this object */
-    virtual std::shared_ptr<BaseModule<T> > clone()
+    virtual std::shared_ptr<BaseModule<T> > clone() const
     {
-        throw std::runtime_error::runtime_error ("Clone not correctly implemented for this module");
+        throw std::runtime_error (std::string{"Clone not correctly implemented for this module: "} + m_module_id);
+        return nullptr;
     };
 
-    std::string get_module_id()
+    std::string get_module_id() const
     {
         return m_module_id;
     }
@@ -482,7 +512,7 @@ public:
     virtual void initialize() {};
     virtual void start_processing()
     {
-        throw std::runtime_error::runtime_error("Processing method must be overridden");
+        throw std::runtime_error("Processing method must be overridden");
     };
     virtual void on_incoming_data(Packet<T>& dta, const std::string& channel)
     {
@@ -512,9 +542,10 @@ protected:
     static std::set<std::string> sm_instances_classes;
 
     std::mutex* m_module_mutex{nullptr};
+    std::string m_module_id;
+
     std::unordered_map<std::string,std::vector<Link<T> > > m_sinks;
 
-    std::string m_module_id;
     bool m_do_reconfigure_module{true};
 };
 
@@ -530,23 +561,24 @@ template <typename D, typename T>
 class Module : public BaseModule<T> {
 public:
     Module(const std::string& mid) : BaseModule<T>(mid) {}
-
-    virtual std::shared_ptr<BaseModule<T> > clone()
+    
+    std::shared_ptr<BaseModule<T> > clone() const override
     {
         auto ptr = new D {static_cast<D const&>(*this)};
         if (ptr == nullptr) {
-            throw std::runtime_error::runtime_error ("Failed to allocate memory for new object");
+            throw std::runtime_error (std::string{"Failed to allocate memory for cloned object in module "} + this->get_module_id());
+            return nullptr;
         } else {
             auto head = std::shared_ptr<BaseModule<T> > {ptr};
             head->clear_channels();
-            for (auto c : BaseModule<T>::get_channels()) {
+            for (const auto& c : BaseModule<T>::get_channels()) {
                 if ((c.length() >= 1) && (c.at(0) == '_')) { // channel starting with _
-                    for (auto s : BaseModule<T>::m_sinks[c]) {
+                    for (const auto& s : BaseModule<T>::m_sinks.find(c)->second) {
                         head->connect_sink(s.m_module, c);
                     }
                     continue;
                 }
-                for (auto s : BaseModule<T>::m_sinks[c]) {
+                for (const auto& s : BaseModule<T>::m_sinks.find(c)->second) {
                     head->connect_sink(s.m_module->clone(), c);
                 }
             }
@@ -575,9 +607,10 @@ public:
         }
     }
 
-    std::shared_ptr<BaseModule<J> > clone()
+    std::shared_ptr<BaseModule<J> > clone() const
     {
-        throw std::runtime_error::runtime_error ("Cannot clone Parallel Processor object");
+        throw std::runtime_error ("Cannot clone Parallel Processor object");
+        return nullptr;
     }
 
     void start_processing()
@@ -646,16 +679,19 @@ public:
                         std::shared_ptr<BaseModule<J> > chead = head->clone();
                         m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, chead});
                     }
-
+                } catch (const boost::exception& e) {
+                    throw std::runtime_error(boost::diagnostic_information(e));
+                } catch(const std::exception& e) {
+                    throw std::runtime_error (std::string{"Failed to initialize fork thread in module "} + this->get_module_id() + ":" + e.what());
                 } catch (...) {
-                    throw std::runtime_error::runtime_error ("Failed to clone module");
+                    throw std::runtime_error (std::string{"Failed to initialize fork thread in module "} + this->get_module_id());
                 }
             }
             m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, head});
         } else if (this->m_sinks["template"].size() == 0) {
-            throw std::runtime_error::runtime_error ("Parallel pipeline template cannot be empty");
+            throw std::runtime_error (std::string{"Pipeline template channel is empty in module "} + this->get_module_id());
         } else {
-            throw std::runtime_error::runtime_error ("Invalid parallel pipeline template");
+            throw std::runtime_error (std::string{"Pipeline template channel is invalid in module "} + this->get_module_id());
         }
     }
 
@@ -696,7 +732,7 @@ public:
 
     std::shared_ptr<BaseModule<J> > clone()
     {
-        throw std::runtime_error::runtime_error ("Cannot clone fork base module");
+        throw std::runtime_error ("Cannot clone fork base module");
     }
 
     void setup_cli(boost::program_options::options_description& desc) const

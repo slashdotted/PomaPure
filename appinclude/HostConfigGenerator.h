@@ -28,51 +28,67 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef POMADEFAULT_H
-#define POMADEFAULT_H
+#ifndef HOSTCONFIGGENERATOR_H
+#define HOSTCONFIGGENERATOR_H
 
-#include "PomaModule.h"
+#include <unordered_map>
+#include <boost/algorithm/string.hpp>
+#include <string>
+#include <istream>
+#include <vector>
+#include <sstream>
+#include <set>
 
-/* *********************************************************************
-   MODIFY THE NEXT PART TO SUIT YOUR NEEDS
-   ********************************************************************/
-#include <iostream>
+namespace poma {
 
-struct MyData : public poma::Serializable {
+class HostConfigGenerator {
+public:
+    HostConfigGenerator(std::istream& pipeline, unsigned int base_port = 6000);
+    std::string operator[](const std::string& host) const;
+    std::set<std::string> hosts() const;
+    std::set<std::string> modules(const std::string& host) const;
 
-    MyData() = default;
+private:
+    struct Module {
+        static int counter;
+        static std::string source(const std::string& host)
+        {
+            std::stringstream ss;
+            ss << "__parallel_source_" << boost::replace_all_copy(host, ".", "_");
+            return ss.str();
+        }
+        static std::string unique(const std::string& prefix)
+        {
+            std::stringstream ss;
+            ss << prefix << ++counter;
+            return ss.str();
+        }
+        static std::string address(const std::string& host, unsigned int port)
+        {
+            std::stringstream ss;
+            ss << "tcp://" << host << ":" << port;
+            return ss.str();
+        }
+        std::string mid;
+        std::string mtype;
+        std::string mhost{"localhost"};
+        std::vector<std::string> cparams;
+        std::unordered_map<std::string,std::string> mparams;
+    };
 
-    MyData(const MyData& o)
-    {
-        // copy constructor
-    }
+    struct Link {
+        std::string fid;
+        std::string tid;
+        std::string channel{"default"};
+        bool debug{false};
+    };
 
-    MyData& operator=(const MyData& o)
-    {
-        // copy assign operator
-        return *this;
-    }
-
-    void serialize(std::string& output) const override
-    {
-        std::string sample{"Hello world"};
-        output.insert(output.end(), sample.begin(), sample.end());
-    }
-
-    void deserialize(const std::string::const_iterator& from, const std::string::const_iterator& to) override
-    {
-        std::string sample;
-        sample.insert(sample.end(), from, to);
-    }
-
+    void die(const std::string& msg);
+    std::unordered_multimap<std::string,Module> m_host_modules_map;
+    std::unordered_multimap<std::string,Link> m_host_link_map;
+    std::unordered_map<std::string,std::string> m_module_host_map;
 };
 
-// The next line is mandatory as it defines all important data types
-DEFAULT_DEFINITIONS(MyData)
-
-/* *********************************************************************
-   END OF USER'S CUSTOM DATATYPE DEFINITION
-   ********************************************************************/
-
+}
 
 #endif
