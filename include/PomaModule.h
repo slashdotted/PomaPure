@@ -157,7 +157,6 @@ bool set_field_value_from_string(M* field, std::string value)
 }
 
 template<>
-<<<<<<< HEAD
 bool set_field_value_from_string(bool* field, std::string value)
 {
     if (value == "true") {
@@ -171,8 +170,6 @@ bool set_field_value_from_string(bool* field, std::string value)
 }
 
 template<>
-=======
->>>>>>> 07090696c41f0462c66e6627cf2224d5afac1ba9
 bool set_field_value_from_string(std::string* field, std::string value)
 {
     *field = value;

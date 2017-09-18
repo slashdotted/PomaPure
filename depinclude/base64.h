@@ -1,6 +1,5 @@
 #include <string>
 #include <iostream>
-#include <opencv2/opencv.hpp>
 
 static const std::string base64_chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
