@@ -16,7 +16,7 @@ mkdir .dependencies
 cd .dependencies
 DEP_ROOT=$(pwd)
 DEP_REPOSITORY_ROOT=../Dependencies
-SYSTEM_DEPS="build-essential checkinstall fakeroot git pkg-config unzip libcurl4-openssl-dev libz-dev wget"
+SYSTEM_DEPS="autoconf automake libtool"
 sudo mkdir -p /usr/local/share/doc
 sudo mkdir -p /usr/local/lib
 
@@ -28,12 +28,14 @@ fi
 echo "Installing system dependencies"
 sudo apt-get install --assume-yes ${SYSTEM_DEPS} || die "Failed to install system dependencies"
 
-if ! check_package poma-cmake; then
-	echo "Building and installing cmake from git"
-	git clone https://github.com/Kitware/CMake.git
-	cd CMake
-	./bootstrap --system-curl --prefix=/usr/local || die "Cannot boostrap cmake"
-	make || die "Cannot make cmake"
-	sudo checkinstall -y --pkgname poma-cmake --pkgversion=3.9 --pkgrelease 1
+if ! check_package poma-libzmq; then
+	echo "Building and installing libzmq"
+	wget https://github.com/zeromq/libzmq/releases/download/v4.2.2/zeromq-4.2.2.tar.gz
+	tar xvfz zeromq-4.2.2.tar.gz
+	cd zeromq-4.2.2/
+	./autogen.sh || die "Cannot autogen libzmq"
+	./configure || die "Cannot configure libzmq"
+	make || die "Cannot make libzmq"
+	sudo checkinstall -y --pkgname poma-libzmq --pkgversion 1 --pkgrelease 1
 	export PATH=/usr/local/bin:$PATH
 fi

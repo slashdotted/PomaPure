@@ -83,23 +83,44 @@ struct Packet {
 // *********************************************************************
 struct Serializable {
     virtual void serialize(std::string& output) const = 0;
-    virtual void deserialize(const std::string::const_iterator& from, const std::string::const_iterator& to) = 0;
+    virtual void deserialize(std::string::const_iterator& from) = 0;
 };
 
 #define ASSERT_IS_POMA_SERIALIZABLE(X) static_assert(std::is_base_of<poma::Serializable, decltype(X)>::value, "X must inherit from poma::Serializable");
 
+void pack(const std::string& source_data_string, std::string& packed_data_string)
+{
+    // Warning: assume a maximum length of 2^32 bytes
+    uint32_t data_payload_size{(uint32_t) source_data_string.size()};
+    // big endian
+    packed_data_string.push_back((data_payload_size >> 24) & 0xFF);
+    packed_data_string.push_back((data_payload_size >> 16) & 0xFF);
+    packed_data_string.push_back((data_payload_size >> 8) & 0xFF);
+    packed_data_string.push_back(data_payload_size & 0xFF);
+    packed_data_string.insert(packed_data_string.end(), source_data_string.begin(), source_data_string.end());
+}
+
+std::string unpack(std::string::const_iterator& from)
+{
+	unsigned char b0 = (unsigned char) *from++;
+    unsigned char b1 = (unsigned char) *from++;
+    unsigned char b2 = (unsigned char) *from++;
+    unsigned char b3 = (unsigned char) *from++;
+	uint32_t data_payload_size{(uint32_t) ((b0 << 24)+(b1 << 16)+(b2 << 8)+ b3)};
+	std::string result{std::string{from, from + data_payload_size}};
+	from = from + data_payload_size;
+	return result;
+}
+
 template<typename T>
 void deserialize(Packet<T>& dta, const std::string& data_string)
 {
-    unsigned char b0 = (unsigned char) data_string.at(0);
-    unsigned char b1 = (unsigned char) data_string.at(1);
-    unsigned char b2 = (unsigned char) data_string.at(2);
-    unsigned char b3 = (unsigned char) data_string.at(3);
-    uint32_t ptree_payload_size{(uint32_t) ((b0 << 24)+(b1 << 16)+(b2 << 8)+ b3)};
-    std::string json_string{data_string.substr (4, ptree_payload_size)};
-    std::stringstream iss{json_string};
+	std::string::const_iterator str_iter{data_string.begin()};
+	std::string json_string{unpack(str_iter)};
+	std::stringstream iss{json_string};
+		std::cerr << "jsonis " << json_string << std::endl;
     boost::property_tree::json_parser::read_json(iss, dta.m_properties);
-    dta.m_data.deserialize(data_string.begin() + 4 + ptree_payload_size, data_string.end());
+    dta.m_data.deserialize(str_iter);
 }
 
 template<typename T>
@@ -109,14 +130,7 @@ void serialize(const Packet<T>& dta, std::string& data_string)
     std::stringstream ss;
     boost::property_tree::write_json(ss, dta.m_properties);
     auto json_string{ss.str()};
-    // Warning: assume a maximum length of 2^32 bytes
-    uint32_t ptree_payload_size{(uint32_t) json_string.size()};
-    // big endian
-    data_string.push_back((ptree_payload_size >> 24) & 0xFF);
-    data_string.push_back((ptree_payload_size >> 16) & 0xFF);
-    data_string.push_back((ptree_payload_size >> 8) & 0xFF);
-    data_string.push_back(ptree_payload_size & 0xFF);
-    data_string.insert(data_string.end(), json_string.begin(), json_string.end());
+    pack(json_string, data_string);
     dta.m_data.serialize(data_string);
 }
 

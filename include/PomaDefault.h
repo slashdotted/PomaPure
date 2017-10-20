@@ -55,14 +55,16 @@ struct MyData : public poma::Serializable {
 
     void serialize(std::string& output) const override
     {
-        std::string sample{"Hello world"};
-        output.insert(output.end(), sample.begin(), sample.end());
+        std::string sample1{"Hello"};
+        std::string sample2{"world"};
+        poma::pack(sample1, output);
+        poma::pack(sample2, output);
     }
 
-    void deserialize(const std::string::const_iterator& from, const std::string::const_iterator& to) override
+    void deserialize(std::string::const_iterator& from) override
     {
-        std::string sample;
-        sample.insert(sample.end(), from, to);
+        std::string sample1{poma::unpack(from)};
+        std::string sample2{poma::unpack(from)};
     }
 
 };
