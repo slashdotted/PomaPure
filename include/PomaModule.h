@@ -195,7 +195,7 @@ if (rname == #prop) { std::stringstream tmp; tmp << std::boolalpha << prop; retu
 
 #define return_writable_property(rname, rvalue, prop) \
 if (rname == #prop) { \
-	if (set_field_value_from_string(&(prop), rvalue)) set_reconfigure_module(); \
+	if (poma::set_field_value_from_string(&(prop), rvalue)) set_reconfigure_module(); \
 	std::stringstream outss; \
 	outss << prop; \
 	return outss.str(); \
