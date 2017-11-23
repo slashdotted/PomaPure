@@ -117,8 +117,7 @@ void deserialize(Packet<T>& dta, const std::string& data_string)
 {
 	std::string::const_iterator str_iter{data_string.begin()};
 	std::string json_string{unpack(str_iter)};
-	std::stringstream iss{json_string};
-		std::cerr << "jsonis " << json_string << std::endl;
+	std::istringstream iss{json_string};
     boost::property_tree::json_parser::read_json(iss, dta.m_properties);
     dta.m_data.deserialize(str_iter);
 }
@@ -158,9 +157,8 @@ struct Link {
 template<typename M>
 bool set_field_value_from_string(M* field, std::string value)
 {
-    std::stringstream ss;
+    std::istringstream ss{value};
     M tmp;
-    ss << value;
     ss >> std::skipws >> std::boolalpha >> tmp;
     if (!ss.fail()) {
         *field = tmp;
