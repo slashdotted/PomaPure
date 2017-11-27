@@ -46,6 +46,10 @@ public:
             const boost::filesystem::path& output_path,
             const std::string& job_id,
             const std::string& json_data);
+	PomaJob(const boost::filesystem::path& loader,
+                 const boost::filesystem::path& modules,
+                 const boost::filesystem::path& output_path,
+                 const std::string& job_id);            
     virtual ~PomaJob();
     pid_t pid() const;
     bool kill();
@@ -68,8 +72,6 @@ public:
                 const boost::filesystem::path& modules_path,
                 const boost::filesystem::path& output_path, unsigned int port = 5232);
     void start_serving();
-
-protected:
     std::string process_request(const std::string& req);
 
 private:

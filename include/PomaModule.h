@@ -300,11 +300,14 @@ public:
             try {
                 i->initialize();
             } catch (const boost::exception& e) {
-                throw std::runtime_error(boost::diagnostic_information(e));
+                std::cerr << "DEBUG: Failed to initialize module " << typeid(*i).name() << ":" << boost::diagnostic_information(e) << std::endl;
+                throw;
             } catch (std::exception e) {
-                throw std::runtime_error (std::string{"Failed to initialize module "} + typeid(*i).name() + ":" + e.what());
+                std::cerr << "DEBUG: Failed to initialize module " << typeid(*i).name() << ":" << e.what() << std::endl;
+                throw;
             } catch (...) {
-                throw std::runtime_error (std::string{"Failed to initialize module: "} + typeid(*i).name());
+                std::cerr << "DEBUG: Failed to initialize module: " << typeid(*i).name() << std::endl;
+                throw;
             }
         }
     }
@@ -338,9 +341,11 @@ public:
             boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).allow_unregistered().run(), vm);
             boost::program_options::notify(vm);
         } catch (const boost::exception& e) {
-            throw std::runtime_error(boost::diagnostic_information(e));
+            std::cerr << "DEBUG: Failed to setup command line arguments: " << boost::diagnostic_information(e) << std::endl;
+            throw;
         } catch (std::exception &e) {
-            throw std::runtime_error(std::string{"Failed to setup command line arguments: "} + e.what());
+            std::cerr << "DEBUG: Failed to setup command line arguments: " << e.what() << std::endl;
+            throw;
         }
         for (auto i : sm_instances) {
             i->process_cli(vm);
@@ -360,15 +365,7 @@ public:
                         std::cerr << "DEBUG: submit (CALL) from " << m_module_id << " : " << typeid(*this).name()
                                   << " to " << s.m_module->m_module_id << " : " << typeid(*(s.m_module)).name()
                                   << " on " << channel << std::endl;
-                        try {
-                            s.m_module->on_incoming_data(dta, channel);
-                        } catch (const boost::exception& e) {
-                            throw std::runtime_error(boost::diagnostic_information(e));
-                        } catch(const std::exception& e) {
-                            throw std::runtime_error(std::string{"DEBUG: Exception "} + e.what() + " while processing data in module " + s.m_module->m_module_id);
-                        } catch(...) {
-                            throw std::runtime_error(std::string{"DEBUG: Exception ??? while processing data in module "} + s.m_module->m_module_id);
-                        }
+                        s.m_module->on_incoming_data(dta, channel);
                         auto after = std::chrono::high_resolution_clock::now();
                         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(after - before).count();
                         std::cerr << "DEBUG: submit (RETURN) from " << m_module_id << " : " << typeid(*this).name()
@@ -379,12 +376,15 @@ public:
                         s.m_module->on_incoming_data(dta, channel);
                     }
                 } catch (const boost::exception& e) {
-                    throw std::runtime_error(boost::diagnostic_information(e));
-                } catch(const std::exception& e) {
-                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while processing data on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
-                } catch(...) {
-                    throw std::runtime_error(std::string{"Unknown exception while processing data on channel "} + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
-                }
+					std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << std::endl;
+					throw;
+				} catch(const std::exception& e) {
+					std::cerr << "DEBUG: Exception " << e.what() << " while processing data in module " << s.m_module->m_module_id << std::endl;
+					throw;
+				} catch(...) {
+					std::cerr << "DEBUG: Exception ??? while processing data in module " << s.m_module->m_module_id << std::endl;
+					throw;
+				}
             }
         }
     }
@@ -406,14 +406,16 @@ public:
                         ss << val;
                     }
                 } catch (const boost::exception& e) {
-                    throw std::runtime_error(boost::diagnostic_information(e));
+                    std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << std::endl;
+                    throw;
                 } catch(const std::exception& e) {
-                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while reading property " + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
+                    std::cerr << "DEBUG: Exception " << e.what() << " while reading property " << name << " on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw;
                 } catch(...) {
-                    throw std::runtime_error(std::string{"Unknown exception while reading property "} + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
+                    std::cerr << "DEBUG: Unknown exception while reading property " << name << " on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw;
                 }
             }
-
         }
         return ss.str();
     }
@@ -433,11 +435,14 @@ public:
                         ss << val;
                     }
                 } catch (const boost::exception& e) {
-                    throw std::runtime_error(boost::diagnostic_information(e));
+					std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << " while writing value " << value << " to property " << name << " on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw;
                 } catch(const std::exception& e) {
-                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while writing value " + value + " to property " + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
+                    std::cerr << "DEBUG: Exception " << e.what() << " while writing value " << value << " to property " << name << " on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw;
                 } catch(...) {
-                    throw std::runtime_error(std::string{"Unknown exception while writing value "} + value + " to property " + name + " on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
+                    std::cerr << "DEBUG: Unknown exception while writing value " << value << " to property " << name << " on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw;
                 }
             }
         }
@@ -459,11 +464,14 @@ public:
                         first = false;
                     }
                 } catch (const boost::exception& e) {
-                    throw std::runtime_error(boost::diagnostic_information(e));
+					std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << " while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw;
                 } catch(const std::exception& e) {
-                    throw std::runtime_error(std::string{"Exception "} + e.what() + " while enumerating properties on channel " + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
+                    std::cerr << "DEBUG: Exception " << e.what() << " while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw;
                 } catch(...) {
-                    throw std::runtime_error(std::string{"Unknown exception while enumerating properties on channel "} + channel + " in module " + s.m_module->m_module_id + " (sent from " + m_module_id + ")");
+					std::cerr << "DEBUG: Unknown exception while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+					throw;
                 }
             }
         }
@@ -689,11 +697,14 @@ public:
                         m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, chead});
                     }
                 } catch (const boost::exception& e) {
-                    throw std::runtime_error(boost::diagnostic_information(e));
+					std::cerr << "DEBUG: Failed to initialize fork thread in module " << this->get_module_id() << ":" << boost::diagnostic_information(e)  << std::endl;
+                    throw;
                 } catch(const std::exception& e) {
-                    throw std::runtime_error (std::string{"Failed to initialize fork thread in module "} + this->get_module_id() + ":" + e.what());
+                    std::cerr << "DEBUG: Failed to initialize fork thread in module " << this->get_module_id() << ":" << e.what() << std::endl;
+                    throw;
                 } catch (...) {
-                    throw std::runtime_error (std::string{"Failed to initialize fork thread in module "} + this->get_module_id());
+					std::cerr << "DEBUG: Failed to initialize fork thread in module " << this->get_module_id() << std::endl;
+                    throw;
                 }
             }
             m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, head});

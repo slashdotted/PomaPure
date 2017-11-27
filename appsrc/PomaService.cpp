@@ -38,6 +38,7 @@
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/exception_ptr.hpp>
 #include <boost/dll/import.hpp>
+#include <boost/algorithm/string.hpp>
 #include "zhelpers.hpp"
 #include "base64.h"
 
@@ -50,15 +51,26 @@ PomaJob::PomaJob(const boost::filesystem::path& loader,
                  const std::string& json_data)
     : m_loader_path{loader.string()}, m_modules_path{modules.string()}, m_job_id{job_id}
 {
-    m_json_file = (output_path / (job_id + ".json")).string();
-    m_stdout_file = (output_path / (job_id + ".out")).string();
-    m_stderr_file = (output_path / (job_id + ".err")).string();
+    m_json_file = (output_path / (job_id + ".poma-json")).string();
+    m_stdout_file = (output_path / (job_id + ".poma-out")).string();
+    m_stderr_file = (output_path / (job_id + ".poma-err")).string();
 
     std::ofstream jsonfile;
     jsonfile.open(m_json_file);
     jsonfile  << json_data;
     jsonfile.flush();
     jsonfile.close();
+}
+
+PomaJob::PomaJob(const boost::filesystem::path& loader,
+                 const boost::filesystem::path& modules,
+                 const boost::filesystem::path& output_path,
+                 const std::string& job_id)
+    : m_loader_path{loader.string()}, m_modules_path{modules.string()}, m_job_id{job_id}
+{
+    m_json_file = (output_path / (job_id + ".poma-json")).string();
+    m_stdout_file = (output_path / (job_id + ".poma-out")).string();
+    m_stderr_file = (output_path / (job_id + ".poma-err")).string();
 }
 
 PomaJob::~PomaJob()
@@ -166,6 +178,16 @@ std::string PomaService::process_request(const std::string& req)
                 m_jobs[jobid] = job;
                 return build_reply("/ success /");
             }
+        } else if (command == "restore") {
+            if (jobid != "" && json != "" && m_jobs.count(jobid) == 0) {
+                PomaJob* job{new PomaJob{
+                        m_loader_path,
+                        m_modules_path,
+                        m_output_path,
+                        jobid}};
+                m_jobs[jobid] = job;
+                return build_reply("/ success /");
+            }
         } else if (command == "start") {
             if (jobid != "" && m_jobs.count(jobid) == 1) {
                 PomaJob* job{m_jobs[jobid]};
@@ -226,6 +248,23 @@ std::string PomaService::process_request(const std::string& req)
                     return build_reply("/ success /");
                 }
             }
+        } else if (command == "clearall") {
+			PomaJob* job{m_jobs[jobid]};
+			job->kill();
+			job->clear();
+			boost::filesystem::path path {m_output_path};
+			boost::filesystem::directory_iterator it {path};
+			while (it != boost::filesystem::directory_iterator()) {
+				if (boost::algorithm::ends_with(it->path().string(), ".poma-json")) {
+					boost::filesystem::remove(it->path().string());
+				} else if (boost::algorithm::ends_with(it->path().string(), ".poma-out")) {
+					boost::filesystem::remove(it->path().string());
+				} else if (boost::algorithm::ends_with(it->path().string(), ".poma-err")) {
+					boost::filesystem::remove(it->path().string());
+				}
+				++it;
+			}
+			return build_reply("/ success /");
         } else {
             throw std::runtime_error(std::string{"Invalid command: "} + command);
         }
@@ -247,6 +286,7 @@ int main(int argc, char* argv[])
     ("loaderpath", boost::program_options::value<std::string>()->required(), "PomaLoader path")
     ("plugindir", boost::program_options::value<std::string>()->required(), "Plugin directory")
     ("check", boost::program_options::value<std::string>(), "JSON file for testing parameters")
+    ("clear", "clear previous data (skip recovery)")
     ("port", boost::program_options::value<unsigned int>()->default_value(5232), "Service TCP port")
     ("outputdir", boost::program_options::value<std::string>()->required(), "Output directory (json, log and error files)");
     boost::program_options::variables_map vm;
@@ -290,6 +330,21 @@ int main(int argc, char* argv[])
             job.clear();
         } else {
             poma::PomaService ps{loader, modules, outpath, vm["port"].as<unsigned int>()};
+            if (!vm.count("clear")) {
+				boost::filesystem::path path {outpath};
+				boost::filesystem::directory_iterator it {path};
+				while (it != boost::filesystem::directory_iterator()) {
+					if (boost::algorithm::ends_with(it->path().string(), ".poma-json")) {
+						std::string jobid{boost::filesystem::change_extension(it->path().string(), "").string()};
+						std::cerr << "Restoring job " << jobid << std::endl;
+						ps.process_request(std::string{"{ \"command\" : \"restore\", \"jobid\" : \""} + jobid + "\" }");
+						ps.process_request(std::string{"{ \"command\" : \"start\", \"jobid\" : \""} + jobid + "\" }");
+					}
+					++it;
+				}
+			} else {
+				ps.process_request(std::string{"{ \"command\" : \"clearall\" }"});
+			}
             ps.start_serving();
         }
     } catch (const std::exception& e) {
