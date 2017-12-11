@@ -42,3 +42,9 @@ for i in */; do cd $i && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Rel
 ### Graphical dataflow editor (Experimental)
 
 An experimental version of a graphical dataflow editor is available at https://github.com/slashdotted/PomaPipelineEditorExperimental
+
+### Customizing Poma
+
+Modules in a Poma pipeline exchange *Packet<T>* structures, where T is a user-defined type: in order to customize Poma you first need to define this data type. Edit the include/PomaDefault.h file: in the default implementation you will find a *MyData* struct with some methods. You can add your own fields to this structure, but you also need to ensure that the *copy constructor*, *assignment operator*, *destructor*, *serialize* and *deserialize* methods are correctly implemented. User defined data is associated with the *m_data* field of the *Packet* struct.
+
+In addition to your custom fields each packet contains an *m_properties* field of type *boost::property_tree::ptree*: this field is used to add metadata information to each packet.
