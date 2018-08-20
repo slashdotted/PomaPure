@@ -371,7 +371,34 @@ int main(int argc, char* argv[])
         if (reply != "") {
             std::cout << reply << std::endl;
         }
-    } else {
+    } else if (command == "dumpconfig") {       
+		if (vm.count("json") == 0) {
+            std::cerr << "dumpconfig command requires json parameter" << std::endl;
+            exit(-1);
+        }
+        if (vm.count("jobid") == 0) {
+            boost::uuids::random_generator uuid_generator;
+            boost::uuids::uuid juuid = uuid_generator();
+            jobid = boost::uuids::to_string(juuid);
+        }
+        // Process pipeline
+        std::ifstream ifs;
+        ifs.open(vm["json"].as<std::string>());
+        poma::HostConfigGenerator hcg{ifs, baseport};
+        // Check remote modules
+        for (const auto& host : hcg.hosts()) {
+			std::ofstream ofs;
+			ofs.open(jobid + "_" + vm["json"].as<std::string>() + "_" + host + ".json", std::ofstream::out);
+			if (ofs.is_open()) {
+				ofs << hcg[host];
+				ofs.flush();
+				ofs.close();
+			} else {
+				std::cerr << "failed to open file for writing" << std::endl;
+				exit(-1);
+			}
+		}
+	} else {
         std::cerr << "Invalid command " << command << std::endl;
     }
 }

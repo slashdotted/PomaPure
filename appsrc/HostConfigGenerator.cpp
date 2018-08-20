@@ -166,7 +166,8 @@ std::set<std::string> HostConfigGenerator::hosts() const
 std::set<std::string> HostConfigGenerator::modules(const std::string& host) const
 {
     std::set<std::string> modules;
-    for (auto it = m_host_modules_map.find(host); it != m_host_modules_map.end(); it++) {
+    auto iter = m_host_modules_map.equal_range(host);
+    for (auto it = iter.first; it != iter.second; ++it) {
         const Module& module{it->second};
         modules.insert(module.mtype);
     }
@@ -187,7 +188,8 @@ std::string HostConfigGenerator::operator[](const std::string& host) const
     boost::property_tree::ptree links;
     pt.put("source", Module::source(host));
 
-    for (auto it = m_host_modules_map.find(host); it != m_host_modules_map.end(); it++) {
+	auto iter = m_host_modules_map.equal_range(host);
+    for (auto it = iter.first; it != iter.second; ++it) {
         const Module& module{it->second};
         boost::property_tree::ptree data;
         data.put("type", module.mtype);
@@ -205,8 +207,8 @@ std::string HostConfigGenerator::operator[](const std::string& host) const
         }
         modules.add_child(module.mid, data);
     }
-
-    for (auto it = m_host_link_map.find(host); it != m_host_link_map.end(); it++) {
+	auto iter2 = m_host_link_map.equal_range(host);
+    for (auto it = iter2.first; it != iter2.second; ++it) {
         const Link& link{it->second};
         boost::property_tree::ptree data;
         data.put("from", link.fid);
