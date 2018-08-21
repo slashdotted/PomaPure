@@ -28,31 +28,29 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef HOSTCONFIGGENERATOR_H
-#define HOSTCONFIGGENERATOR_H
+#ifndef PARALLELCONFIGGENERATOR_H
+#define PARALLELCONFIGGENERATOR_H
 
 #include "Common.h"
-#include <string>
 #include <istream>
-#include <sstream>
-#include <set>
+#include <iostream>
+#include <vector>
 
 namespace poma {
 
-class HostConfigGenerator {
+class ParallelConfigGenerator {
 public:
-    HostConfigGenerator(std::istream& pipeline, unsigned int base_port = 6000);
-    std::string operator[](const std::string& host) const;
-    std::set<std::string> hosts() const;
-    std::set<std::string> modules(const std::string& host) const;
-
+    ParallelConfigGenerator(std::istream& pipeline);
+    void generate(std::ostream& output);
 private:
-    void die(const std::string& msg);
-    std::unordered_multimap<std::string,Module> m_host_modules_map;
-    std::unordered_multimap<std::string,Link> m_host_link_map;
-    std::unordered_map<std::string,std::string> m_module_host_map;
+	void die(const std::string& msg);
+	void create_fork_bridge(Module m);
+	std::string m_source_mid;
+    std::vector<Module> m_modules;
+    std::vector<Link> m_links;
 };
 
 }
 
 #endif
+

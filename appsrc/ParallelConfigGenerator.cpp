@@ -28,20 +28,19 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "ParallelConfigGenerator.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <cstdlib>
-#include "HostConfigGenerator.h"
-#include <iostream>
 
 namespace poma {
-
-HostConfigGenerator::HostConfigGenerator(std::istream& pipeline, unsigned int base_port)
+	
+ParallelConfigGenerator::ParallelConfigGenerator(std::istream& pipeline)
 {
-    boost::property_tree::ptree pt;
+	boost::property_tree::ptree pt;
     boost::property_tree::json_parser::read_json(pipeline, pt);
     boost::property_tree::ptree jmodules{pt.get_child("modules.")};
-    std::string source_mid{pt.get("source", "")};
-
+    m_source_mid = pt.get("source", "");
+	// Process modules
     for(auto &m : jmodules) {
         Module mod;
         mod.mid = m.first.data();
@@ -55,8 +54,6 @@ HostConfigGenerator::HostConfigGenerator(std::istream& pipeline, unsigned int ba
                 }
             } else if (md.first == "#host") {
                 mod.mhost = md.second.data();
-            } else if (md.first.find("#") == 0) {
-                continue; // comments
             } else {
                 mod.mparams[md.first] = md.second.data();
             }
@@ -64,16 +61,9 @@ HostConfigGenerator::HostConfigGenerator(std::istream& pipeline, unsigned int ba
         if (mod.mtype == "") {
             die("invalid module type definition: " + mod.mtype);
         }
-        m_host_modules_map.insert(std::make_pair(mod.mhost,mod));
-        m_module_host_map.insert(std::make_pair(mod.mid,mod.mhost));
+        m_modules.push_back(mod);
     }
-
-    std::string source_host{m_module_host_map.find(source_mid)->second};
-    Link lnkprocessor;
-    lnkprocessor.fid = Module::source(source_host);
-    lnkprocessor.tid = source_mid;
-    m_host_link_map.insert(std::make_pair(source_host,lnkprocessor));
-
+	// Process links
     boost::property_tree::ptree jlinks{pt.get_child("links.")};
     for(auto &l : jlinks) {
         Link lnk;
@@ -90,108 +80,37 @@ HostConfigGenerator::HostConfigGenerator(std::istream& pipeline, unsigned int ba
                 }
             }
         }
-
         if (lnk.fid.find("#") == 0 || lnk.tid.find("#") == 0) continue; // commented modules
 
-        if (lnk.fid == "" || m_module_host_map.count(lnk.fid) == 0) {
-            die("invalid link definition: invalid or no source specified: " + lnk.fid + ", to "+ lnk.tid + ", channel "+lnk.channel);
-        }
-        if (lnk.tid == "" || m_module_host_map.count(lnk.tid) == 0) {
-            die("invalid link definition: invalid or no destination specified: " + lnk.tid + ", from "+ lnk.fid+ ", channel "+lnk.channel);
-        }
         if (lnk.channel == "") {
             die("invalid link definition: channel cannot be empty");
         }
-        std::string fhost{m_module_host_map[lnk.fid]};
-        std::string thost{m_module_host_map[lnk.tid]};
-        if (fhost == thost) {
-            m_host_link_map.insert(std::make_pair(fhost,lnk));
-        } else {
-            // Insert ZeroMQ bridge
-            Module sink;
-            sink.mid = Module::unique("__net_sink_");
-            sink.mtype = "ZeroMQSink";
-            sink.mhost = fhost;
-            sink.mparams["sinkaddress"] = Module::address(thost, base_port);
-            Module source;
-            source.mid = Module::unique("__net_source");
-            source.mtype = "ZeroMQSource";
-            source.mhost = thost;
-            source.mparams["sourceaddress"] = Module::address("*", base_port);
-            ++base_port;
-            m_host_modules_map.insert(std::make_pair(sink.mhost,sink));
-            m_host_modules_map.insert(std::make_pair(source.mhost,source));
-            m_module_host_map[sink.mid] = sink.mhost;
-            m_module_host_map[source.mid] = source.mhost;
-            Link lnksink;
-            lnksink.fid = lnk.fid;
-            lnksink.tid = sink.mid;
-            lnksink.channel = lnk.channel;
-            lnksink.debug = lnk.debug;
-            m_host_link_map.insert(std::make_pair(fhost,lnksink));
-            Link lnksource;
-            lnksource.fid = source.mid;
-            lnksource.tid = lnk.tid;
-            lnksource.channel = lnk.channel;
-            lnksource.debug = lnk.debug;
-            m_host_link_map.insert(std::make_pair(thost,lnksource));
-            Link lnkprocessor;
-            lnkprocessor.fid = Module::source(thost);
-            lnkprocessor.tid = source.mid;
-            m_host_link_map.insert(std::make_pair(thost,lnkprocessor));
-        }
-    }
-
-    // Each host must have a ParProcessor module as source
-    for(auto const& h: hosts()) {
-        Module source_pp;
-        source_pp.mid =  Module::source(h);
-        source_pp.mhost = h;
-        source_pp.mtype = "ParProcessor";
-        m_host_modules_map.insert(std::make_pair(source_pp.mhost,source_pp));
-        m_module_host_map.insert(std::make_pair(source_pp.mid,source_pp.mhost));
+        m_links.push_back(lnk);
     }
 }
 
-std::set<std::string> HostConfigGenerator::hosts() const
-{
-    std::set<std::string> hosts;
-    for(auto const& h: m_host_modules_map) {
-        hosts.insert(h.first);
-    }
-    return hosts;
-}
-
-std::set<std::string> HostConfigGenerator::modules(const std::string& host) const
-{
-    std::set<std::string> modules;
-    auto iter = m_host_modules_map.equal_range(host);
-    for (auto it = iter.first; it != iter.second; ++it) {
-        const Module& module{it->second};
-        modules.insert(module.mtype);
-    }
-    return modules;
-}
-
-void HostConfigGenerator::die(const std::string& msg)
+void ParallelConfigGenerator::die(const std::string& msg)
 {
     std::cerr << msg << std::endl;
     std::exit(-1);
 }
 
-
-std::string HostConfigGenerator::operator[](const std::string& host) const
+void ParallelConfigGenerator::generate(std::ostream& output)
 {
+	for(unsigned int i{0}; i<m_modules.size(); i++) {
+	    Module& m{m_modules[i]};
+	    if (m.mparams.count("#parallel") > 0) {
+	        create_fork_bridge(m);
+	    }
+	}
     boost::property_tree::ptree pt;
     boost::property_tree::ptree modules;
     boost::property_tree::ptree links;
-    pt.put("source", Module::source(host));
-
-	auto iter = m_host_modules_map.equal_range(host);
-    for (auto it = iter.first; it != iter.second; ++it) {
-        const Module& module{it->second};
+    pt.put("source", m_source_mid);
+    for (const auto& module : m_modules) {
         boost::property_tree::ptree data;
         data.put("type", module.mtype);
+        data.put("#host", module.mhost);
         for(auto& pit : module.mparams) {
             data.put(pit.first, pit.second);
         }
@@ -206,9 +125,8 @@ std::string HostConfigGenerator::operator[](const std::string& host) const
         }
         modules.add_child(module.mid, data);
     }
-	auto iter2 = m_host_link_map.equal_range(host);
-    for (auto it = iter2.first; it != iter2.second; ++it) {
-        const Link& link{it->second};
+
+    for (const auto& link : m_links) {
         boost::property_tree::ptree data;
         data.put("from", link.fid);
         data.put("to", link.tid);
@@ -219,10 +137,52 @@ std::string HostConfigGenerator::operator[](const std::string& host) const
 
     pt.add_child("modules", modules);
     pt.add_child("links", links);
-
-    std::ostringstream out;
-    boost::property_tree::write_json (out, pt, true);
-    return out.str();
+    boost::property_tree::write_json (output, pt, true);
 }
 
+void ParallelConfigGenerator::create_fork_bridge(Module m)
+{
+	Module fork;
+	fork.mid = Module::unique("__parexecutor_");
+	fork.mtype = "ParExecutor";
+	fork.mhost = m.mhost;
+	fork.mparams["#autogenerated"] = "true";
+	m_modules.push_back(fork);
+	Module joiner;
+	joiner.mid = Module::unique("__joiner_");
+	joiner.mtype = "Joiner";
+	joiner.mhost = m.mhost;
+    joiner.mparams["#autogenerated"] = "true";
+	m_modules.push_back(joiner);
+    // Fix links (that now go through the ParExecutor module
+	for (auto& l : m_links) {
+	    if (l.tid == m.mid) {
+            // A->B becomes A->F
+	        l.tid = fork.mid;
+	    } else if (l.fid == m.mid) {
+	        // B->C becomes
+            l.fid = fork.mid;
+	    }
+	}
+	// Create link from the ParExecutor to the original module
+	Link templatefork;
+	templatefork.fid = fork.mid;
+	templatefork.tid = m.mid;
+	templatefork.channel = "template";
+	m_links.push_back(templatefork);
+    // Create link from the original module to the Joiner
+	Link joinerlink;
+	joinerlink.fid = m.mid;
+	joinerlink.tid = joiner.mid;
+	joinerlink.channel = "default";
+	m_links.push_back(joinerlink);
+    // Create link from the ParExecutor to the original module
+	Link backlink;
+	backlink.fid = joiner.mid;
+	backlink.tid = fork.mid;
+	backlink.channel = "_join";
+	m_links.push_back(backlink);
+}
+	
+	
 }

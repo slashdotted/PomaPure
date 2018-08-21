@@ -26,33 +26,12 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-#ifndef HOSTCONFIGGENERATOR_H
-#define HOSTCONFIGGENERATOR_H
-
+*/   
+    
 #include "Common.h"
-#include <string>
-#include <istream>
-#include <sstream>
-#include <set>
 
 namespace poma {
 
-class HostConfigGenerator {
-public:
-    HostConfigGenerator(std::istream& pipeline, unsigned int base_port = 6000);
-    std::string operator[](const std::string& host) const;
-    std::set<std::string> hosts() const;
-    std::set<std::string> modules(const std::string& host) const;
-
-private:
-    void die(const std::string& msg);
-    std::unordered_multimap<std::string,Module> m_host_modules_map;
-    std::unordered_multimap<std::string,Link> m_host_link_map;
-    std::unordered_map<std::string,std::string> m_module_host_map;
-};
+int Module::counter{0};
 
 }
-
-#endif
