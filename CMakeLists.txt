@@ -31,7 +31,7 @@ target_link_libraries(PomaLoader Loader)
 add_executable(SampleEmbeddedPipeline ${SOURCES_EXAMPLE})
 target_link_libraries(SampleEmbeddedPipeline Loader)
 
-add_executable(PomaDeploy ${SOURCES_DEPLOYAPP} appsrc/ParallelOptimizerGenerator.cpp appinclude/ParallelOptimizerGenerator.h appsrc/DeploymentEvaluator.cpp appinclude/DistributedConfigGenerator.h)
+add_executable(PomaDeploy ${SOURCES_DEPLOYAPP} appsrc/ParallelOptimizerGenerator.cpp appinclude/ParallelOptimizerGenerator.h appinclude/DistributedConfigGenerator.h)
 target_link_libraries(PomaDeploy Loader zmq)
 
 add_executable(PomaService ${SOURCES_SERVICEAPP})
