@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
     loader.initialize();
 
     /* 9. We start pushing packets to the pipeline */
-    for (int i{0}; i<100; i++) {
+    for (int i{0}; i<10000; i++) {
         PomaPacketType du;
         du.m_properties.put("sample.text", "Example");
         du.m_properties.put("sample.data", i);

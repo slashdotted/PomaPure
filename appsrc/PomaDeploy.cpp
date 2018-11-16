@@ -29,7 +29,7 @@
 */
 
 #include <boost/program_options.hpp>
-#include "HostConfigGenerator.h"
+#include "DistributedConfigGenerator.h"
 #include "ParallelConfigGenerator.h"
 #include "ParallelOptimizerGenerator.h"
 #include <iostream>
@@ -43,6 +43,7 @@
 #include <string>
 #include <cstdlib>
 #include "zhelpers.hpp"
+#include "Common.h"
 #include <algorithm>
 #include <ParallelOptimizerGenerator.h>
 
@@ -185,6 +186,7 @@ int main(int argc, char* argv[])
     ("cmd", boost::program_options::value<std::string>()->required(), "command to execute")
     ("host", boost::program_options::value<std::string>()->default_value("localhost"), "remote host")
     ("json", boost::program_options::value<std::string>(), "pipeline description file (json)")
+    ("outputjson", boost::program_options::value<std::string>(), "pipeline output description file (json)")
     ("jobid", boost::program_options::value<std::string>(), "job unique identifier")
     ("port", boost::program_options::value<unsigned int>()->default_value(5232), "Service TCP port")
     ("baseport", boost::program_options::value<unsigned int>()->default_value(6000), "Base ZeroMQ sink port");
@@ -208,8 +210,44 @@ int main(int argc, char* argv[])
     if (vm.count("jobid")) {
         jobid = vm["jobid"].as<std::string>();
     }
-
-    if (command == "deploy" || command == "run") {
+    
+    if (command == "gen") {
+         if (vm.count("json") == 0) {
+            std::cerr << "deploy command requires json parameter" << std::endl;
+            std::exit(-1);
+        }
+        if (vm.count("jobid") == 0) {
+            boost::uuids::random_generator uuid_generator;
+            boost::uuids::uuid juuid = uuid_generator();
+            jobid = boost::uuids::to_string(juuid);
+        }
+        // Process pipeline
+        std::string source_mid;
+        std::map<std::string,poma::Module> modules;
+        std::vector<poma::Link> links;
+        std::ifstream ifs;
+        ifs.open(vm["json"].as<std::string>());
+        poma::load(ifs, source_mid, modules, links);
+        poma::ParallelConfigGenerator pcg{source_mid, modules, links};
+        pcg.process();
+        poma::ParallelOptimizerGenerator pog{source_mid, modules, links};
+        pog.process();
+        std::stringstream oss;
+        std::ofstream ofs;
+        
+        std::string genfile;
+        if (vm.count("outputjson") == 0) {
+            genfile = "output_" + jobid + "_" + vm["json"].as<std::string>() + "_" + host + ".json";
+        } else {
+            genfile = vm["outputjson"].as<std::string>();
+        }
+        ofs.open(genfile);      
+        poma::generate(source_mid, modules, links, ofs);
+        ofs.flush();
+        ofs.close();
+        std::cout << "Done generating local config:" << genfile << std::endl;
+        std::exit(0);       
+    } else if (command == "deploy" || command == "run") {
         if (vm.count("json") == 0) {
             std::cerr << "deploy command requires json parameter" << std::endl;
             std::exit(-1);
@@ -220,12 +258,16 @@ int main(int argc, char* argv[])
             jobid = boost::uuids::to_string(juuid);
         }
         // Process pipeline
+        std::string source_mid;
+        std::map<std::string,poma::Module> modules;
+        std::vector<poma::Link> links;
         std::ifstream ifs;
         ifs.open(vm["json"].as<std::string>());
-        poma::ParallelConfigGenerator pcg{ifs};
-        std::stringstream ss;
-        pcg.generate(ss);
-        poma::HostConfigGenerator hcg{ss, baseport};
+        poma::load(ifs, source_mid, modules, links);
+        poma::ParallelConfigGenerator pcg{source_mid, modules, links};
+        pcg.process();
+        poma::DistributedConfigGenerator hcg{source_mid, modules, links, baseport};
+        hcg.process();
         // Check remote modules
         std::cout << "Verifying modules" << std::endl;
         for (const auto& host : hcg.hosts()) {
@@ -239,11 +281,14 @@ int main(int argc, char* argv[])
         std::cout << "Deploying pipeline jobs" << std::endl;
         for (const auto& host : hcg.hosts()) {
             std::cout << "\t" << host << ":" << port << "...";
-            std::stringstream iss;
-            iss << hcg[host];
-            poma::ParallelOptimizerGenerator pog{iss};
+            std::string host_source_mid;
+            std::map<std::string,poma::Module> host_modules;
+            std::vector<poma::Link> host_links;
+            hcg.get_config(host, host_source_mid, host_modules, host_links);
+            poma::ParallelOptimizerGenerator pog{host_source_mid, host_modules, host_links};
+            pog.process();
             std::stringstream oss;
-            pog.generate(oss);
+            poma::generate(host_source_mid, host_modules, host_links, oss);
             if (create_job(host, port, jobid, oss.str())) {
                 deployed_hosts.push_back(host);
                 std::cout << "OK" << std::endl;
@@ -302,11 +347,10 @@ int main(int argc, char* argv[])
             std::cerr << "killall command requires jobid parameter" << std::endl;
             std::exit(-1);
         }
-        // Process pipeline
+        // Determine which hosts need to be informed
         std::ifstream ifs;
         ifs.open(vm["json"].as<std::string>());
-        poma::HostConfigGenerator hcg{ifs, baseport};
-        for (const auto& host : hcg.hosts()) {
+        for (const auto& host : poma::extract_hosts(ifs)) {
             if(kill_job(host, port, jobid)) {
                 std::cout << host << "\t" << port << "\t" << jobid << "\tSTOPPED" << std::endl;
             } else {
@@ -325,8 +369,7 @@ int main(int argc, char* argv[])
         // Process pipeline
         std::ifstream ifs;
         ifs.open(vm["json"].as<std::string>());
-        poma::HostConfigGenerator hcg{ifs, baseport};
-        for (const auto& host : hcg.hosts()) {
+        for (const auto& host : poma::extract_hosts(ifs)) {
             if(clear_job(host, port, jobid)) {
                 std::cout << host << "\t" << port << "\t" << jobid << "\tCLEARED" << std::endl;
             } else {
@@ -383,8 +426,8 @@ int main(int argc, char* argv[])
         if (reply != "") {
             std::cout << reply << std::endl;
         }
-    } else if (command == "dumpconfig") {       
-		if (vm.count("json") == 0) {
+    } else if (command == "dumpconfig") {
+        if (vm.count("json") == 0) {
             std::cerr << "dumpconfig command requires json parameter" << std::endl;
             std::exit(-1);
         }
@@ -394,31 +437,37 @@ int main(int argc, char* argv[])
             jobid = boost::uuids::to_string(juuid);
         }
         // Process pipeline
+        std::string source_mid;
+        std::map<std::string,poma::Module> modules;
+        std::vector<poma::Link> links;
         std::ifstream ifs;
         ifs.open(vm["json"].as<std::string>());
-        poma::ParallelConfigGenerator pcg{ifs};
-        std::stringstream ss;
-        pcg.generate(ss);
-        poma::HostConfigGenerator hcg{ss, baseport};
-        // Check remote modules
+        poma::load(ifs, source_mid, modules, links);
+        poma::ParallelConfigGenerator pcg{source_mid, modules, links};
+        pcg.process();
+        poma::DistributedConfigGenerator hcg{source_mid, modules, links, baseport};
+        hcg.process();
         for (const auto& host : hcg.hosts()) {
-			std::ofstream ofs;
-			ofs.open(jobid + "_" + vm["json"].as<std::string>() + "_" + host + ".json", std::ofstream::out);
-			if (ofs.is_open()) {
-                std::stringstream iss;
-                iss << hcg[host];
-                poma::ParallelOptimizerGenerator pog{iss};
+            std::ofstream ofs;
+            ofs.open(jobid + "_" + vm["json"].as<std::string>() + "_" + host + ".json", std::ofstream::out);
+            if (ofs.is_open()) {
+                std::string host_source_mid;
+                std::map<std::string,poma::Module> host_modules;
+                std::vector<poma::Link> host_links;
+                hcg.get_config(host, host_source_mid, host_modules, host_links);
+                poma::ParallelOptimizerGenerator pog{host_source_mid, host_modules, host_links};
+                pog.process();
                 std::stringstream oss;
-                pog.generate(oss);
-				ofs << oss.str();
-				ofs.flush();
-				ofs.close();
-			} else {
-				std::cerr << "failed to open file for writing" << std::endl;
-				std::exit(-1);
-			}
-		}
-	} else {
+                poma::generate(host_source_mid, host_modules, host_links, oss);
+                ofs << oss.str();
+                ofs.flush();
+                ofs.close();
+            } else {
+                std::cerr << "failed to open file for writing" << std::endl;
+                std::exit(-1);
+            }
+        }
+    } else {
         std::cerr << "Invalid command " << command << std::endl;
     }
 }

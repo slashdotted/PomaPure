@@ -28,30 +28,38 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef HOSTCONFIGGENERATOR_H
-#define HOSTCONFIGGENERATOR_H
+#ifndef DISTRIBUTEDCONFIGGENERATOR_H
+#define DISTRIBUTEDCONFIGGENERATOR_H
 
 #include "Common.h"
 #include <string>
 #include <istream>
 #include <sstream>
 #include <set>
+#include <map>
 
 namespace poma {
 
-class HostConfigGenerator {
-public:
-    HostConfigGenerator(std::istream& pipeline, unsigned int base_port = 6000);
-    std::string operator[](const std::string& host) const;
-    std::set<std::string> hosts() const;
-    std::set<std::string> modules(const std::string& host) const;
+    class DistributedConfigGenerator {
+    public:
+        DistributedConfigGenerator(const std::string& p_source_mid, const std::map<std::string,Module>& p_modules, const std::vector<Link> &p_links, unsigned int base_port = 6000);
+        void process();
+        void get_config(const std::string& host,
+                        std::string& p_source_mid, std::map<std::string,Module>& p_modules, std::vector<Link>& p_links);
 
-private:
-    void die(const std::string& msg);
-    std::unordered_multimap<std::string,Module> m_host_modules_map;
-    std::unordered_multimap<std::string,Link> m_host_link_map;
-    std::unordered_map<std::string,std::string> m_module_host_map;
-};
+        std::set<std::string> hosts() const;
+        std::set<std::string> modules(const std::string& host) const;
+
+    private:
+        std::unordered_multimap<std::string,Module> m_host_modules_map;
+        std::unordered_multimap<std::string,Link> m_host_link_map;
+        std::unordered_map<std::string,std::string> m_module_host_map;
+
+        const std::string& m_source_mid;
+        const std::map<std::string,Module>& m_modules;
+        const std::vector<Link>& m_links;
+        unsigned int m_base_port;
+    };
 
 }
 

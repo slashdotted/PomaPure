@@ -35,22 +35,22 @@
 #include <istream>
 #include <iostream>
 #include <vector>
+#include <map>
 
 namespace poma {
 
 class ParallelConfigGenerator {
 public:
-    ParallelConfigGenerator(std::istream& pipeline);
-    void generate(std::ostream& output);
+    ParallelConfigGenerator(std::string& p_source_mid, std::map<std::string,Module>& p_modules, std::vector<Link>& p_links);
+    void process();
 private:
-	void die(const std::string& msg);
-	void create_fork_bridge(Module m);
-	std::string m_source_mid;
-    std::vector<Module> m_modules;
-    std::vector<Link> m_links;
+	void create_fork_bridge(Module m, const std::string& num_threads);
+    void recursive_insert_thread_info(const std::string& mid, const std::string& threadcount);
+	std::string& m_source_mid;
+    std::map<std::string,Module>& m_modules;
+    std::vector<Link>& m_links;
 };
 
 }
 
 #endif
-

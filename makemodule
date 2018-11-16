@@ -39,7 +39,7 @@ cat <<EOF > src/$1.cpp
 #include "$1.h"
 
 /* Declare module details (name, description, cparams, can be source) */
-DEFAULT_EXPORT_ALL($1, "$1 module", "", false)
+DEFAULT_EXPORT_ALL($1, "$1 module", "", PROCESSING_MODULE)
 
 /* Constructor */
 $1::$1(const std::string& mid) : poma::Module<$1, PomaDataType>(mid) {}
@@ -47,7 +47,35 @@ $1::$1(const std::string& mid) : poma::Module<$1, PomaDataType>(mid) {}
 /* Method for processing incoming data packets */
 void $1::on_incoming_data(PomaPacketType& dta, const std::string& channel)
 {
+	/* 
+	// Enable the following if the module supports dynamic reconfiguration
+	{ 
+		synchronized_scope(); // Prevent race conditions on dynamic properties
+		if (check_reconfigure_module()) {
+			// Perform necessary module reconfiguration (if some property has changed)
+		}
+	}
+	*/
     submit_data(dta);
+}
+
+void $1::setup_cli(boost::program_options::options_description& desc) const
+{
+	boost::program_options::options_description ${1}Options("$1 options");
+    ${1}Options.add_options()
+    ("anoption", boost::program_options::value<std::string>()->default_value("default"), "A sample CLI");
+    desc.add(${1}Options);
+}
+
+void $1::process_cli(boost::program_options::variables_map& vm)
+{
+	 m_field = vm["default"].as<std::string>();
+}
+
+
+void $1::initialize()
+{
+	set_reconfigure_module();
 }
 
 EOF
@@ -61,8 +89,16 @@ cat << EOF > include/$1.h
 class $1 : public poma::Module<$1, PomaDataType>
 {
 public:
+	DECLARE_PROPERTIES((m_field)) // Dynamic properties
+
     $1(const std::string& mid);
     void on_incoming_data(PomaPacketType& dta, const std::string& channel) override;
+    void setup_cli(boost::program_options::options_description& desc) const override;
+    void process_cli(boost::program_options::variables_map& vm) override;
+    void initialize() override;
+    
+private:
+	std::string m_field;
 };
 #endif
 

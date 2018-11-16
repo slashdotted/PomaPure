@@ -279,6 +279,9 @@ void Loader::flush()
         }
     }
     std::cerr << "done" << std::endl;
+	for (const auto& m : m_modules) {
+		m.second->finalize();
+	}
 }
 
 void Loader::configure(int argc, char* argv[])

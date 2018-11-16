@@ -31,7 +31,6 @@
 #ifndef POMAMODULE_H
 #define POMAMODULE_H
 
-#include <unordered_map>
 #include <vector>
 #include <string>
 #include <iostream>
@@ -65,9 +64,13 @@
 #include <boost/dll/alias.hpp>
 #include <boost/function.hpp>
 #include <boost/config.hpp>
+#include <boost/lockfree/queue.hpp>
 #include <type_traits>
 
 namespace poma {
+    
+#define SOURCE_MODULE true
+#define PROCESSING_MODULE false
 
 // *********************************************************************
 // BASE PACKET TEMPLATE
@@ -102,22 +105,22 @@ void pack(const std::string& source_data_string, std::string& packed_data_string
 
 std::string unpack(std::string::const_iterator& from)
 {
-	unsigned char b0 = (unsigned char) *from++;
+    unsigned char b0 = (unsigned char) *from++;
     unsigned char b1 = (unsigned char) *from++;
     unsigned char b2 = (unsigned char) *from++;
     unsigned char b3 = (unsigned char) *from++;
-	uint32_t data_payload_size{(uint32_t) ((b0 << 24)+(b1 << 16)+(b2 << 8)+ b3)};
-	std::string result{std::string{from, from + data_payload_size}};
-	from = from + data_payload_size;
-	return result;
+    uint32_t data_payload_size{(uint32_t) ((b0 << 24)+(b1 << 16)+(b2 << 8)+ b3)};
+    std::string result{std::string{from, from + data_payload_size}};
+    from = from + data_payload_size;
+    return result;
 }
 
 template<typename T>
 void deserialize(Packet<T>& dta, const std::string& data_string)
 {
-	std::string::const_iterator str_iter{data_string.begin()};
-	std::string json_string{unpack(str_iter)};
-	std::istringstream iss{json_string};
+    std::string::const_iterator str_iter{data_string.begin()};
+    std::string json_string{unpack(str_iter)};
+    std::istringstream iss{json_string};
     boost::property_tree::json_parser::read_json(iss, dta.m_properties);
     dta.m_data.deserialize(str_iter);
 }
@@ -193,10 +196,10 @@ if (rname == #prop) { std::stringstream tmp; tmp << std::boolalpha << prop; retu
 
 #define return_writable_property(rname, rvalue, prop) \
 if (rname == #prop) { \
-	if (poma::set_field_value_from_string(&(prop), rvalue)) set_reconfigure_module(); \
-	std::stringstream outss; \
-	outss << prop; \
-	return outss.str(); \
+    if (poma::set_field_value_from_string(&(prop), rvalue)) set_reconfigure_module(); \
+    std::stringstream outss; \
+    outss << prop; \
+    return outss.str(); \
 }
 
 #define RETURN_READABLE_PROPERTY(r, data, field) return_readable_property(name, field);
@@ -206,26 +209,28 @@ if (rname == #prop) { \
 
 
 #define DECLARE_READABLE_PROPERTIES(props) \
-	std::string on_read_property(const std::string& name) const override { \
-		BOOST_PP_SEQ_FOR_EACH(RETURN_READABLE_PROPERTY,, props) \
-	}
+    std::string on_read_property(const std::string& name) const override { \
+        BOOST_PP_SEQ_FOR_EACH(RETURN_READABLE_PROPERTY,, props) \
+        throw std::runtime_error{std::string{"invalid readable property "} + name}; \
+    }
 
 #define DECLARE_WRITABLE_PROPERTIES(props) \
-	std::string on_write_property(const std::string& name, const std::string& value) override { \
-		synchronized_scope(); \
-		BOOST_PP_SEQ_FOR_EACH(RETURN_WRITABLE_PROPERTY,, props) \
-	}
+    std::string on_write_property(const std::string& name, const std::string& value) override { \
+        synchronized_scope(); \
+        BOOST_PP_SEQ_FOR_EACH(RETURN_WRITABLE_PROPERTY,, props) \
+        throw std::runtime_error{std::string{"invalid writable property "} + name}; \
+    }
 
 #define DECLARE_ENUMERATABLE_PROPERTIES(props) \
-	std::string on_enumerate_properties() const override { \
-		std::vector<std::string> properties { BOOST_PP_SEQ_FOR_EACH_I(ENUMERATE_PROPERTY, , props) }; \
-		return boost::algorithm::join(properties, ","); \
-	}
+    std::string on_enumerate_properties() const override { \
+        std::vector<std::string> properties { BOOST_PP_SEQ_FOR_EACH_I(ENUMERATE_PROPERTY, , props) }; \
+        return boost::algorithm::join(properties, ","); \
+    }
 
 #define DECLARE_PROPERTIES(props) \
-	DECLARE_READABLE_PROPERTIES(props) \
-	DECLARE_WRITABLE_PROPERTIES(props) \
-	DECLARE_ENUMERATABLE_PROPERTIES(props)
+    DECLARE_READABLE_PROPERTIES(props) \
+    DECLARE_WRITABLE_PROPERTIES(props) \
+    DECLARE_ENUMERATABLE_PROPERTIES(props)
 
 // *********************************************************************
 // BASE MODULE TEMPLATE (Cloneable when subclassed)
@@ -356,7 +361,10 @@ public:
     /* Data processing method */
     void submit_data(Packet<T>& dta, const std::string& channel = "default")
     {
-        auto it{m_sinks.find(channel)};
+		auto it{m_sinks.begin()};
+		if (m_sinks.size() != 1) {
+			it = m_sinks.find(channel);
+		}
         if (it != m_sinks.end()) {
             for(auto& s : it->second) {
                 try {
@@ -376,15 +384,15 @@ public:
                         s.m_module->on_incoming_data(dta, channel);
                     }
                 } catch (const boost::exception& e) {
-					std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << std::endl;
-					throw;
-				} catch(const std::exception& e) {
-					std::cerr << "DEBUG: Exception " << e.what() << " while processing data in module " << s.m_module->m_module_id << std::endl;
-					throw;
-				} catch(...) {
-					std::cerr << "DEBUG: Exception ??? while processing data in module " << s.m_module->m_module_id << std::endl;
-					throw;
-				}
+                    std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << std::endl;
+                    throw;
+                } catch(const std::exception& e) {
+                    std::cerr << "DEBUG: Exception " << e.what() << " while processing data in module " << s.m_module->m_module_id << std::endl;
+                    throw;
+                } catch(...) {
+                    std::cerr << "DEBUG: Exception ??? while processing data in module " << s.m_module->m_module_id << std::endl;
+                    throw;
+                }
             }
         }
     }
@@ -435,7 +443,7 @@ public:
                         ss << val;
                     }
                 } catch (const boost::exception& e) {
-					std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << " while writing value " << value << " to property " << name << " on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << " while writing value " << value << " to property " << name << " on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
                     throw;
                 } catch(const std::exception& e) {
                     std::cerr << "DEBUG: Exception " << e.what() << " while writing value " << value << " to property " << name << " on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
@@ -464,14 +472,14 @@ public:
                         first = false;
                     }
                 } catch (const boost::exception& e) {
-					std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << " while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    std::cerr << "DEBUG: Exception " << boost::diagnostic_information(e) << " while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
                     throw;
                 } catch(const std::exception& e) {
                     std::cerr << "DEBUG: Exception " << e.what() << " while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
                     throw;
                 } catch(...) {
-					std::cerr << "DEBUG: Unknown exception while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
-					throw;
+                    std::cerr << "DEBUG: Unknown exception while enumerating properties on channel " << channel << " in module " << s.m_module->m_module_id << " (sent from " << m_module_id << ")" << std::endl;
+                    throw;
                 }
             }
         }
@@ -479,7 +487,7 @@ public:
     }
 
     virtual void flush() {}
-
+    virtual void finalize() {}
 
     /* Pipeline construction methods */
     std::vector<std::string> get_channels() const
@@ -504,6 +512,7 @@ public:
     std::shared_ptr<BaseModule<T> > connect_sink(std::shared_ptr<BaseModule<T> > m, const std::string& channel = "default", bool do_debug = false)
     {
         Link<T> link{m, do_debug};
+        std::cerr << "Connecting " << m_module_id << " to " << m->m_module_id << " on channel " << channel << std::endl;
         m_sinks[channel].push_back(link);
         return m;
     }
@@ -561,7 +570,7 @@ protected:
     std::mutex* m_module_mutex{nullptr};
     std::string m_module_id;
 
-    std::unordered_map<std::string,std::vector<Link<T> > > m_sinks;
+    std::map<std::string,std::vector<Link<T> > > m_sinks;
 
     bool m_do_reconfigure_module{true};
 };
@@ -656,6 +665,45 @@ private:
     std::vector<std::thread> m_thread_pool;
 };
 
+// *********************************************************************
+// BOUNDED BUFFER
+// *********************************************************************
+template<typename T, int size = 0>
+class BoundedBuffer {
+public:
+	void set_bound(unsigned int s) {
+		m_buffer_size = s;
+	}
+
+	void push(T& item) {
+		std::unique_lock<std::mutex> lock(m_queue_lock);
+		m_space_available.wait(lock, [&] { return m_buffer_size == 0 || m_queue.size() < m_buffer_size; });
+		m_queue.push(item);
+		m_data_available.notify_one();
+	}
+	
+	T pop() {
+		std::unique_lock<std::mutex> lock(m_queue_lock);
+		m_data_available.wait(lock, [&]  { return m_queue.size() > 0; });
+		T item{m_queue.front()};
+		m_queue.pop();
+		m_space_available.notify_one();
+		return item;
+	}
+	
+	unsigned int count() {
+		std::unique_lock<std::mutex> lock(m_queue_lock);
+		return m_queue.size();
+	}
+
+
+private:
+	std::mutex m_queue_lock;
+	std::condition_variable m_data_available;
+	std::condition_variable m_space_available;
+	std::queue<T> m_queue;
+	unsigned int m_buffer_size{size};
+};
 
 // *********************************************************************
 // FORK MODULE TEMPLATE
@@ -668,8 +716,8 @@ public:
 
     ~ForkBaseModule()
     {
-        assert(m_incoming_queue.size() == 0);
-        assert(m_outgoing_queue.size() == 0);
+        assert(m_incoming_queue.count() == 0);
+        assert(m_outgoing_queue.count() == 0);
         for (auto& t : m_thread_pool) {
             t.detach();
         }
@@ -679,7 +727,8 @@ public:
     {
         int n_threads {(int) std::thread::hardware_concurrency()};
         if (m_thread_limit < 0) m_thread_limit = n_threads;
-        n_threads = std::min(n_threads, m_thread_limit);
+        n_threads = m_thread_limit; //std::min(n_threads, m_thread_limit);
+        m_incoming_queue.set_bound(n_threads);
         std::shared_ptr<BaseModule<J> > head;
         if (n_threads <= 0) {
             // do nothing
@@ -687,8 +736,8 @@ public:
         } else if (this->m_sinks["template"].size() == 1) {
             head = this->m_sinks["template"][0].m_module;
             m_thread_pool.push_back(std::thread {&ForkBaseModule::collector_fn, this});
-            std::cerr << "Parallel operation in module " << this->get_module_id() << ": using " << n_threads << " threads" << std::endl;
-            for (int i {1}; i<n_threads; i++) {
+            std::cerr << "Parallel operation in module " << this->get_module_id() << ": using " << n_threads << " worker threads" << std::endl;
+            for (int i {0}; i<n_threads; i++) {
                 try {
                     if (stateless) {
                         m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, head});
@@ -697,13 +746,13 @@ public:
                         m_thread_pool.push_back(std::thread {&ForkBaseModule::executor_fn, this, chead});
                     }
                 } catch (const boost::exception& e) {
-					std::cerr << "DEBUG: Failed to initialize fork thread in module " << this->get_module_id() << ":" << boost::diagnostic_information(e)  << std::endl;
+                    std::cerr << "DEBUG: Failed to initialize fork thread in module " << this->get_module_id() << ":" << boost::diagnostic_information(e)  << std::endl;
                     throw;
                 } catch(const std::exception& e) {
                     std::cerr << "DEBUG: Failed to initialize fork thread in module " << this->get_module_id() << ":" << e.what() << std::endl;
                     throw;
                 } catch (...) {
-					std::cerr << "DEBUG: Failed to initialize fork thread in module " << this->get_module_id() << std::endl;
+                    std::cerr << "DEBUG: Failed to initialize fork thread in module " << this->get_module_id() << std::endl;
                     throw;
                 }
             }
@@ -721,26 +770,15 @@ public:
             if (m_thread_limit <= 0) {
                 this->submit_data(dta, "template");
             } else {
-                Packet<J> copy;
-                copy.m_data = dta.m_data;
-                copy.m_properties = dta.m_properties;
-                {
-                    m_incoming_buffer_size++;
-                    std::unique_lock<std::mutex> lock(m_incoming_queue_mutex);
-                    m_incoming_queue.push(copy);
-                }
-                incoming_data_available_cv.notify_one();
+				m_incoming_buffer_size++;
+				m_incoming_queue.push(dta);
             }
         } else if (channel == "_join") {
             if (m_thread_limit <= 0) {
                 this->submit_data(dta);
             } else {
-                {
-                    m_outgoing_buffer_size++;
-                    std::unique_lock<std::mutex> lock(m_outgoing_queue_mutex);
-                    m_outgoing_queue.push(dta);
-                }
-                outgoing_data_available_cv.notify_one();
+				m_outgoing_buffer_size++;
+				m_outgoing_queue.push(dta);
             }
         }
     }
@@ -780,13 +818,7 @@ protected:
     void executor_fn(std::shared_ptr<BaseModule<J> > head)
     {
         for(;;) {
-            Packet<J> du;
-            {
-                std::unique_lock<std::mutex> lock(m_incoming_queue_mutex);
-                incoming_data_available_cv.wait(lock, [&] { return !m_incoming_queue.empty(); });
-                du = m_incoming_queue.front();
-                m_incoming_queue.pop();
-            }
+            Packet<J> du{m_incoming_queue.pop()};
             head->on_incoming_data(du, "default");
             m_incoming_buffer_size--;
         }
@@ -795,14 +827,7 @@ protected:
     void collector_fn()
     {
         for(;;) {
-            Packet<J> du;
-            {
-                std::unique_lock<std::mutex> lock(m_outgoing_queue_mutex);
-                outgoing_data_available_cv.wait(lock, [&] { return !m_outgoing_queue.empty(); });
-                du = m_outgoing_queue.front();
-                m_outgoing_queue.pop();
-
-            }
+            Packet<J> du{m_outgoing_queue.pop()};
             this->submit_data(du, "default");
             m_outgoing_buffer_size--;
         }
@@ -812,12 +837,8 @@ private:
     std::atomic_int m_incoming_buffer_size{0}, m_outgoing_buffer_size{0};
     int m_thread_limit {-1};
     std::vector<std::thread> m_thread_pool;
-    std::condition_variable incoming_data_available_cv;
-    std::mutex m_incoming_queue_mutex;
-    std::queue<Packet<J> > m_incoming_queue;
-    std::condition_variable outgoing_data_available_cv;
-    std::mutex m_outgoing_queue_mutex;
-    std::queue<Packet<J> > m_outgoing_queue;
+    BoundedBuffer<Packet<J> > m_incoming_queue;
+    BoundedBuffer<Packet<J> > m_outgoing_queue;
 };
 
 // *********************************************************************
@@ -877,30 +898,30 @@ struct ModuleFactory {
 // *********************************************************************
 
 #define DEFAULT_DEFINITIONS(thedatatype) \
-	using PomaDataType = thedatatype; \
-	using PomaModuleType = poma::BaseModule<thedatatype>; \
-	using PomaPacketType = poma::Packet<thedatatype>;
+    using PomaDataType = thedatatype; \
+    using PomaModuleType = poma::BaseModule<thedatatype>; \
+    using PomaPacketType = poma::Packet<thedatatype>;
 
 #define DEFAULT_EXPORT_ALL(themoduletype, themoduledescription, themoduleconstructionparameters, canbesource) \
-	struct LocalFactory : public poma::ModuleFactory<PomaModuleType> { \
-		std::string name() const override { \
-			return #themoduletype; \
-		} \
-		std::string description() const override { \
-			return themoduledescription; \
-		} \
-		std::string construction_parameters() const override { \
-			return themoduleconstructionparameters; \
-		} \
-		bool can_be_source() const override { \
-			return canbesource; \
-		} \
-		PomaModuleType* create(const std::string& name) const override { \
-			return new themoduletype(name); \
-		} \
-	}; \
-	extern "C" BOOST_SYMBOL_EXPORT LocalFactory factory; \
-	LocalFactory factory;
+    struct LocalFactory : public poma::ModuleFactory<PomaModuleType> { \
+        std::string name() const override { \
+            return #themoduletype; \
+        } \
+        std::string description() const override { \
+            return themoduledescription; \
+        } \
+        std::string construction_parameters() const override { \
+            return themoduleconstructionparameters; \
+        } \
+        bool can_be_source() const override { \
+            return canbesource; \
+        } \
+        PomaModuleType* create(const std::string& name) const override { \
+            return new themoduletype(name); \
+        } \
+    }; \
+    extern "C" BOOST_SYMBOL_EXPORT LocalFactory factory; \
+    LocalFactory factory;
 
 
 #endif

@@ -34,10 +34,25 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <set>
 #include <sstream>
+#include <map>
 #include <boost/algorithm/string.hpp>
 
 namespace poma {
+
+
+
+struct FlagBag {
+    std::vector<std::string> m_required;
+    std::vector<std::string> m_forbidden;
+    std::map<std::string,double> m_greater_than;
+    std::map<std::string,double> m_less_than;
+    std::map<std::string,double> m_equal_to;
+
+    void clear();
+    void parse_flags(const std::string flags);
+};
     
 struct Module {
 	static int counter;
@@ -62,6 +77,7 @@ struct Module {
 	std::string mid;
 	std::string mtype;
 	std::string mhost{"localhost"};
+    FlagBag mflags;
 	std::vector<std::string> cparams;
 	std::unordered_map<std::string,std::string> mparams;
 };
@@ -70,8 +86,14 @@ struct Link {
 	std::string fid;
 	std::string tid;
 	std::string channel{"default"};
+    std::string bandwidth;
 	bool debug{false};
 };
+
+void die(const std::string& msg);
+void load(std::istream& pipeline, std::string& p_source_mid, std::map<std::string,Module>& p_modules, std::vector<Link>& p_links);
+void generate(const std::string& p_source_mid, const std::map<std::string,Module>& p_modules, const std::vector<Link>& p_links, std::ostream& output);
+std::set<std::string> extract_hosts(std::istream& pipeline);
 
 }
 

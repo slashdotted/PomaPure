@@ -28,28 +28,48 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef PARALLELOPTIMIZERGENERATOR_H
-#define PARALLELOPTIMIZERGENERATOR_H
-
-#include "Common.h"
-#include <istream>
-#include <iostream>
+#ifndef DEPLOYMENTEVALUATOR_H
+#define DEPLOYMENTEVALUATOR_H
+#include <unordered_set>
+#include <map>
 #include <vector>
+#include <string>
+#include <istream>
+#include <Common.h>
 
 namespace poma {
 
-    class ParallelOptimizerGenerator {
-    public:
-        ParallelOptimizerGenerator(std::string& p_source_mid, std::map<std::string,Module>& p_modules, std::vector<Link>& p_links);
-        void process();
+    struct Machine {
+        Machine(const std::string& hostname);
+        void add_flag(const std::string& flag);
+        void add_resource(const std::string& name, double amount);
+
+        bool assign_module(const Module &m);
+        std::vector<std::string> assigned_modules();
+
+        double network_score();
+        double balancing_score();
+        double performance_score();
+
     private:
-        bool merge_parallel_modules(Module a, Module b);
-        std::string& m_source_mid;
-        std::map<std::string,Module>& m_modules;
-        std::vector<Link>& m_links;
+        std::string m_hostname;
+        std::vector<std::string> m_modules;
+        std::unordered_set<std::string> m_flags;
+        std::map<std::string,double> m_consumable_resources; // Threads,RAM,Bandwidth
+    };
+
+
+    class DeploymentEvaluator {
+    public:
+        DeploymentEvaluator(std::istream& pipeline);
+
+    private:
+        void loadMachineData(std::istream& is);
+        std::vector<Module> m_modules;
+        std::vector<Link> m_links;
+
     };
 
 }
 
-
-#endif // PARALLELOPTIMIZERGENERATOR_H
+#endif

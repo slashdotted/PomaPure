@@ -15,7 +15,7 @@ include_directories(include "${PROJECT_BINARY_DIR}")
 file(GLOB SOURCES_LIB "src/*.cpp")
 file(GLOB SOURCES_APP "appsrc/PomaLoader.cpp")
 file(GLOB SOURCES_EXAMPLE "appsrc/SampleEmbeddedPipeline.cpp")
-file(GLOB SOURCES_DEPLOYAPP "appsrc/PomaDeploy.cpp" "appsrc/HostConfigGenerator.cpp" "appsrc/Common.cpp" "appsrc/ParallelConfigGenerator.cpp")
+file(GLOB SOURCES_DEPLOYAPP "appsrc/PomaDeploy.cpp" "appsrc/DistributedConfigGenerator.cpp" "appsrc/Common.cpp" "appsrc/ParallelConfigGenerator.cpp")
 file(GLOB SOURCES_SERVICEAPP "appsrc/PomaService.cpp")
 
 if(CMAKE_COMPILER_IS_GNUCC)
@@ -31,7 +31,7 @@ target_link_libraries(PomaLoader Loader)
 add_executable(SampleEmbeddedPipeline ${SOURCES_EXAMPLE})
 target_link_libraries(SampleEmbeddedPipeline Loader)
 
-add_executable(PomaDeploy ${SOURCES_DEPLOYAPP} appsrc/ParallelOptimizerGenerator.cpp appinclude/ParallelOptimizerGenerator.h)
+add_executable(PomaDeploy ${SOURCES_DEPLOYAPP} appsrc/ParallelOptimizerGenerator.cpp appinclude/ParallelOptimizerGenerator.h appsrc/DeploymentEvaluator.cpp appinclude/DistributedConfigGenerator.h)
 target_link_libraries(PomaDeploy Loader zmq)
 
 add_executable(PomaService ${SOURCES_SERVICEAPP})
